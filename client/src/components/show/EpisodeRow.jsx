@@ -1,8 +1,8 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, Eye, RotateCcw } from 'lucide-react';
 import { thumbUrl } from '../../utils/tmdbImageUrl';
 import { formatMinutes, formatDate } from '../../utils/formatTime';
-import { useState } from 'react';
 
 export default function EpisodeRow({
   episode,
@@ -31,66 +31,34 @@ export default function EpisodeRow({
     setAnimating(false);
   };
 
-  const handleContextMenu = (e) => {
-    e.preventDefault();
-    setContextMenu(true);
-  };
-
   return (
     <>
-      <motion.div
-        layout
-        initial={{ opacity: 0, x: -8 }}
-        animate={{ opacity: 1, x: 0 }}
-        className={`episode-row select-none ${isNext ? 'next-episode' : ''}`}
-        onContextMenu={handleContextMenu}
+      <div
+        className="episode-row select-none"
+        style={{ opacity: isWatched ? 0.7 : 1 }}
       >
         {/* Thumbnail */}
-        <div className="relative flex-shrink-0 w-24 h-14 rounded-lg overflow-hidden bg-bg-tertiary">
+        <div style={{ flexShrink: 0, width: 80, height: 56, borderRadius: 4, overflow: 'hidden', background: '#1a1a1a' }}>
           {thumb ? (
             <img src={thumb} alt={episode.name} className="poster-img" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-text-muted text-xs">
-              No preview
-            </div>
-          )}
-          {isNext && (
-            <div className="absolute inset-0 border-2 border-accent-gold rounded-lg" />
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', fontSize: 20 }}>🎬</div>
           )}
         </div>
 
         {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono font-semibold text-text-secondary">
-              S{String(season).padStart(2, '0')}·E{String(episode.episode_number).padStart(2, '0')}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+            <span style={{ color: '#fff', fontSize: 15, fontWeight: 700 }}>
+              S{String(season).padStart(2, '0')} | E{String(episode.episode_number).padStart(2, '0')}
             </span>
-            {isNext && (
-              <span className="text-[10px] font-bold uppercase tracking-wider text-accent-gold bg-accent-gold/10 px-1.5 py-0.5 rounded">
-                Next
-              </span>
-            )}
-            {rewatchCount > 0 && (
-              <span className="text-[10px] text-text-muted flex items-center gap-0.5">
-                <RotateCcw size={9} /> {rewatchCount}×
-              </span>
-            )}
           </div>
-          <h4
-            className={`text-sm font-medium mt-0.5 truncate ${
-              isWatched ? 'text-text-secondary line-through decoration-text-muted/40' : 'text-white'
-            }`}
-          >
+          <p style={{ color: isWatched ? '#666' : '#999', fontSize: 12, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {episode.name}
-          </h4>
-          <div className="flex items-center gap-3 mt-0.5">
-            {episode.runtime > 0 && (
-              <span className="text-xs text-text-muted">{formatMinutes(episode.runtime)}</span>
-            )}
-            {episode.air_date && (
-              <span className="text-xs text-text-muted">{formatDate(episode.air_date)}</span>
-            )}
-          </div>
+          </p>
+          {rewatchCount > 0 && (
+            <span style={{ color: '#F5C518', fontSize: 10 }}>+{rewatchCount} rewatch</span>
+          )}
         </div>
 
         {/* Check button */}
@@ -99,6 +67,8 @@ export default function EpisodeRow({
           whileTap={{ scale: 0.85 }}
           className={`check-btn ${isWatched ? 'watched' : ''}`}
           aria-label={isWatched ? 'Mark as unwatched' : 'Mark as watched'}
+          style={{ flexShrink: 0 }}
+          onContextMenu={(e) => { e.preventDefault(); setContextMenu(true); }}
         >
           <AnimatePresence mode="wait">
             {isWatched ? (
@@ -109,7 +79,7 @@ export default function EpisodeRow({
                 exit={{ scale: 0 }}
                 transition={{ type: 'spring', stiffness: 400, damping: 20 }}
               >
-                <Check size={16} className="text-bg-primary" strokeWidth={3} />
+                <Check size={18} color="#fff" strokeWidth={3} />
               </motion.div>
             ) : (
               <motion.div
@@ -118,58 +88,65 @@ export default function EpisodeRow({
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
               >
-                <Eye size={15} className="text-text-muted" />
+                {/* empty circle icon */}
               </motion.div>
             )}
           </AnimatePresence>
         </motion.button>
-      </motion.div>
+      </div>
 
-      {/* Context menu (right-click) */}
+      {/* Bottom sheet context menu */}
       <AnimatePresence>
         {contextMenu && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setContextMenu(false)} />
+            <div
+              style={{ position: 'fixed', inset: 0, zIndex: 40, background: 'rgba(0,0,0,0.5)' }}
+              onClick={() => setContextMenu(false)}
+            />
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 glass-strong rounded-2xl p-2 w-64 shadow-card"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              style={{
+                position: 'fixed',
+                bottom: 0,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '100%',
+                maxWidth: 430,
+                zIndex: 50,
+                background: '#1a1a1a',
+                borderRadius: '16px 16px 0 0',
+                padding: '8px 0 32px',
+              }}
             >
-              <p className="text-xs text-text-muted px-3 py-1.5 font-medium uppercase tracking-wider">
+              <div style={{ width: 40, height: 4, background: '#444', borderRadius: 2, margin: '8px auto 16px' }} />
+              <p style={{ color: '#888', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', padding: '0 20px 12px' }}>
                 Mark as...
               </p>
-              {isWatched && (
-                <button
-                  className="btn-ghost w-full justify-start text-sm text-text-primary"
-                  onClick={() => {
-                    onUnwatch(season, episode.episode_number);
-                    setContextMenu(false);
-                  }}
-                >
-                  <Eye size={15} className="text-text-muted" /> Not watched
-                </button>
-              )}
-              {isWatched && (
-                <button
-                  className="btn-ghost w-full justify-start text-sm text-text-primary"
-                  onClick={() => {
-                    onRewatch(season, episode.episode_number);
-                    setContextMenu(false);
-                  }}
-                >
-                  <RotateCcw size={15} className="text-text-muted" /> Rewatched (+1)
-                </button>
-              )}
               {!isWatched && (
                 <button
-                  className="btn-ghost w-full justify-start text-sm text-text-primary"
-                  onClick={() => {
-                    onWatch(season, episode.episode_number, episode.name, episode.runtime, episode.air_date);
-                    setContextMenu(false);
-                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 20px', background: 'none', border: 'none', color: '#fff', fontSize: 15, fontWeight: 500, cursor: 'pointer' }}
+                  onClick={() => { onWatch(season, episode.episode_number, episode.name, episode.runtime, episode.air_date); setContextMenu(false); }}
                 >
-                  <Check size={15} className="text-accent-green" /> Mark as watched
+                  <Eye size={20} color="#888" /> Watched
+                </button>
+              )}
+              {isWatched && (
+                <button
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 20px', background: 'none', border: 'none', color: '#fff', fontSize: 15, fontWeight: 500, cursor: 'pointer' }}
+                  onClick={() => { onUnwatch(season, episode.episode_number); setContextMenu(false); }}
+                >
+                  <Eye size={20} color="#888" /> Not watched
+                </button>
+              )}
+              {isWatched && (
+                <button
+                  style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 20px', background: 'none', border: 'none', color: '#fff', fontSize: 15, fontWeight: 500, cursor: 'pointer' }}
+                  onClick={() => { onRewatch(season, episode.episode_number); setContextMenu(false); }}
+                >
+                  <RotateCcw size={20} color="#888" /> Rewatched (+1)
                 </button>
               )}
             </motion.div>

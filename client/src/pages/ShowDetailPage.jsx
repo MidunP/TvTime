@@ -5,49 +5,80 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { showService } from '../services/showService';
 import { posterUrl, backdropUrl, profileUrl } from '../utils/tmdbImageUrl';
 import { formatMinutes, formatYear } from '../utils/formatTime';
-import HeroBackdrop from '../components/show/HeroBackdrop';
 import EpisodeRow from '../components/show/EpisodeRow';
-import {
-  ArrowLeft, Plus, Check, Star, Tv, Users, ChevronDown, List,
-  Heart, MoreHorizontal, Trash2
-} from 'lucide-react';
+import { ArrowLeft, Plus, Check, Star, Tv, Users, ChevronDown, ChevronUp, MoreHorizontal, Heart, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-function SeasonSelector({ seasons, selected, onSelect }) {
-  const [open, setOpen] = useState(false);
-  const validSeasons = seasons.filter((s) => s.season_number > 0);
+// Status bar color for the show
+const STATUS_BAR = {
+  watching:   '#F5C518',
+  watchlist:  '#2196F3',
+  completed:  '#4CAF50',
+  paused:     '#FF9800',
+  dropped:    '#E53935',
+  rewatching: '#9C27B0',
+};
+
+function SeasonAccordion({ season, episodes, watchedSet, selectedSeason, onToggle, isOpen, onWatch, onUnwatch, onRewatch, tmdbId }) {
+  const seasonWatched = episodes.filter((ep) => watchedSet[`${season.season_number}-${ep.episode_number}`]).length;
+  const total = episodes.length;
+  const pct = total > 0 ? (seasonWatched / total) * 100 : 0;
 
   return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((p) => !p)}
-        className="flex items-center gap-2 glass px-4 py-2.5 rounded-xl text-sm font-semibold hover:border-accent-violet/40 transition-colors"
-      >
-        Season {selected}
-        <ChevronDown size={16} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
+    <div>
+      {/* Season header row */}
+      <div className="season-row" onClick={onToggle}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+          <span style={{ color: '#fff', fontSize: 16, fontWeight: 800 }}>Season {season.season_number}</span>
+          {isOpen ? <ChevronUp size={16} color="#888" /> : <ChevronDown size={16} color="#888" />}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: '#888', fontSize: 13 }}>{seasonWatched}/{total}</span>
+          {/* Check circle */}
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            border: `2px solid ${seasonWatched === total && total > 0 ? '#4CAF50' : 'rgba(255,255,255,0.2)'}`,
+            background: seasonWatched === total && total > 0 ? '#4CAF50' : 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {seasonWatched === total && total > 0 && <Check size={14} color="#fff" strokeWidth={3} />}
+          </div>
+        </div>
+      </div>
+      {/* Yellow progress bar under season header */}
+      <div style={{ height: 3, background: '#222' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: '#F5C518', transition: 'width 0.3s ease' }} />
+      </div>
+
+      {/* Episodes */}
       <AnimatePresence>
-        {open && (
+        {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            className="absolute top-full left-0 mt-2 glass-strong rounded-xl border border-surface-border z-50 overflow-hidden shadow-card w-48"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{ overflow: 'hidden' }}
           >
-            {validSeasons.map((s) => (
-              <button
-                key={s.season_number}
-                onClick={() => { onSelect(s.season_number); setOpen(false); }}
-                className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                  selected === s.season_number
-                    ? 'bg-accent-violet/20 text-accent-violet font-semibold'
-                    : 'text-text-secondary hover:bg-surface-hover hover:text-white'
-                }`}
-              >
-                Season {s.season_number}
-                <span className="text-text-muted text-xs ml-2">({s.episode_count} eps)</span>
-              </button>
-            ))}
+            {episodes.map((ep) => {
+              const key = `${season.season_number}-${ep.episode_number}`;
+              const epData = watchedSet[key];
+              const isWatched = !!epData;
+              return (
+                <EpisodeRow
+                  key={ep.id}
+                  episode={ep}
+                  showId={tmdbId}
+                  season={season.season_number}
+                  isWatched={isWatched}
+                  isNext={false}
+                  rewatchCount={epData?.rewatchCount || 0}
+                  onWatch={(s, e, name, runtime, airDate) => onWatch({ season: s, episode: e, name, runtime, airDate })}
+                  onUnwatch={(s, e) => onUnwatch({ season: s, episode: e })}
+                  onRewatch={(s, e) => onRewatch({ season: s, episode: e })}
+                />
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>
@@ -62,28 +93,19 @@ export default function ShowDetailPage() {
   const tmdbId = parseInt(id);
 
   const [activeTab, setActiveTab] = useState('episodes');
-  const [selectedSeason, setSelectedSeason] = useState(1);
+  const [openSeasons, setOpenSeasons] = useState({ 1: true });
+  const [seasonEpisodesCache, setSeasonEpisodesCache] = useState({});
 
-  // Fetch TMDb show data
   const { data: show, isLoading: showLoading } = useQuery({
     queryKey: ['tmdb-show', tmdbId],
     queryFn: () => showService.getTmdbShow(tmdbId),
   });
 
-  // Fetch season episodes
-  const { data: seasonData, isLoading: seasonLoading } = useQuery({
-    queryKey: ['tmdb-season', tmdbId, selectedSeason],
-    queryFn: () => showService.getTmdbSeason(tmdbId, selectedSeason),
-    enabled: !!show,
-  });
-
-  // Fetch user's watchlist item for this show
   const { data: watchlistItem } = useQuery({
     queryKey: ['show-item', tmdbId],
     queryFn: () => showService.getShow(tmdbId).catch(() => null),
   });
 
-  // Fetch progress (which episodes are watched)
   const { data: progress } = useQuery({
     queryKey: ['show-progress', tmdbId],
     queryFn: () => showService.getProgress(tmdbId),
@@ -92,19 +114,16 @@ export default function ShowDetailPage() {
 
   const watchedSet = progress?.watchedSet || {};
 
-  // Season progress
-  const seasonEpisodes = seasonData?.episodes || [];
-  const seasonWatched = seasonEpisodes.filter(
-    (ep) => watchedSet[`${selectedSeason}-${ep.episode_number}`]
-  ).length;
+  // Fetch episodes for open seasons
+  const openSeasonNums = Object.keys(openSeasons).filter((k) => openSeasons[k]).map(Number);
 
-  // Find next unwatched episode
-  const nextEpisode = useMemo(() => {
-    if (!seasonEpisodes.length) return null;
-    return seasonEpisodes.find((ep) => !watchedSet[`${selectedSeason}-${ep.episode_number}`]);
-  }, [seasonEpisodes, watchedSet, selectedSeason]);
+  // Pre-fetch season 1 episodes
+  const { data: season1Data } = useQuery({
+    queryKey: ['tmdb-season', tmdbId, 1],
+    queryFn: () => showService.getTmdbSeason(tmdbId, 1),
+    enabled: !!show,
+  });
 
-  // Add to watchlist mutation
   const addMutation = useMutation({
     mutationFn: () => showService.addShow({
       tmdbShowId: tmdbId,
@@ -122,12 +141,9 @@ export default function ShowDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['show-item', tmdbId] });
       toast.success('Added to your list! 📺');
     },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || 'Failed to add show');
-    },
+    onError: (err) => toast.error(err.response?.data?.message || 'Failed to add show'),
   });
 
-  // Remove mutation
   const removeMutation = useMutation({
     mutationFn: () => showService.removeShow(tmdbId),
     onSuccess: () => {
@@ -137,31 +153,19 @@ export default function ShowDetailPage() {
     },
   });
 
-  // Watch episode — OPTIMISTIC UPDATE
   const watchMutation = useMutation({
     mutationFn: ({ season, episode, name, runtime, airDate }) =>
-      showService.markWatched({
-        tmdbShowId: tmdbId,
-        season,
-        episode,
-        episodeName: name,
-        runtime,
-        airDate,
-      }),
+      showService.markWatched({ tmdbShowId: tmdbId, season, episode, episodeName: name, runtime, airDate }),
     onMutate: async ({ season, episode }) => {
       await queryClient.cancelQueries({ queryKey: ['show-progress', tmdbId] });
       const prev = queryClient.getQueryData(['show-progress', tmdbId]);
       queryClient.setQueryData(['show-progress', tmdbId], (old) => ({
         ...old,
         watchedSet: { ...(old?.watchedSet || {}), [`${season}-${episode}`]: { watchedAt: new Date() } },
-        watchedCount: (old?.watchedCount || 0) + 1,
       }));
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      queryClient.setQueryData(['show-progress', tmdbId], ctx.prev);
-      toast.error('Failed to mark episode');
-    },
+    onError: (err, vars, ctx) => queryClient.setQueryData(['show-progress', tmdbId], ctx.prev),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['show-progress', tmdbId] });
       queryClient.invalidateQueries({ queryKey: ['watchlist'] });
@@ -169,23 +173,19 @@ export default function ShowDetailPage() {
     },
   });
 
-  // Unwatch episode — OPTIMISTIC UPDATE
   const unwatchMutation = useMutation({
-    mutationFn: ({ season, episode }) =>
-      showService.markUnwatched({ tmdbShowId: tmdbId, season, episode }),
+    mutationFn: ({ season, episode }) => showService.markUnwatched({ tmdbShowId: tmdbId, season, episode }),
     onMutate: async ({ season, episode }) => {
       await queryClient.cancelQueries({ queryKey: ['show-progress', tmdbId] });
       const prev = queryClient.getQueryData(['show-progress', tmdbId]);
       queryClient.setQueryData(['show-progress', tmdbId], (old) => {
         const newSet = { ...(old?.watchedSet || {}) };
         delete newSet[`${season}-${episode}`];
-        return { ...old, watchedSet: newSet, watchedCount: Math.max(0, (old?.watchedCount || 0) - 1) };
+        return { ...old, watchedSet: newSet };
       });
       return { prev };
     },
-    onError: (err, vars, ctx) => {
-      queryClient.setQueryData(['show-progress', tmdbId], ctx.prev);
-    },
+    onError: (err, vars, ctx) => queryClient.setQueryData(['show-progress', tmdbId], ctx.prev),
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['show-progress', tmdbId] });
       queryClient.invalidateQueries({ queryKey: ['watchlist'] });
@@ -193,9 +193,8 @@ export default function ShowDetailPage() {
   });
 
   const rewatchMutation = useMutation({
-    mutationFn: ({ season, episode }) =>
-      showService.markRewatched({ tmdbShowId: tmdbId, season, episode }),
-    onSuccess: () => toast.success('Marked as rewatched! +1 🔁'),
+    mutationFn: ({ season, episode }) => showService.markRewatched({ tmdbShowId: tmdbId, season, episode }),
+    onSuccess: () => toast.success('Marked as rewatched! 🔁'),
   });
 
   const toggleFavorite = async () => {
@@ -206,271 +205,299 @@ export default function ShowDetailPage() {
 
   if (showLoading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="skeleton w-full h-80 rounded-2xl" />
-        <div className="skeleton w-64 h-8 rounded" />
-        <div className="skeleton w-full h-12 rounded-xl" />
+      <div style={{ background: '#000', minHeight: '100vh' }}>
+        <div className="skeleton" style={{ height: 280 }} />
+        <div style={{ padding: '16px' }}>
+          <div className="skeleton" style={{ height: 28, width: '60%', marginBottom: 12 }} />
+          <div className="skeleton" style={{ height: 16, width: '40%', marginBottom: 8 }} />
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="skeleton" style={{ height: 72, marginBottom: 4 }} />
+          ))}
+        </div>
       </div>
     );
   }
 
-  if (!show) return <div className="text-center py-20 text-text-muted">Show not found</div>;
+  if (!show) return <div style={{ color: '#888', textAlign: 'center', padding: 40 }}>Show not found</div>;
 
-  const cast = show.credits?.cast?.slice(0, 12) || [];
   const validSeasons = show.seasons?.filter((s) => s.season_number > 0) || [];
+  const cast = show.credits?.cast?.slice(0, 12) || [];
+  const barColor = STATUS_BAR[watchlistItem?.status] || '#F5C518';
+
+  // Overall progress
+  const totalWatched = Object.keys(watchedSet).length;
+  const totalEps = show.number_of_episodes || 1;
+  const overallPct = Math.min(100, (totalWatched / totalEps) * 100);
 
   return (
-    <div className="space-y-8 -mt-8 -mx-6">
+    <div style={{ background: '#000', minHeight: '100vh' }}>
       {/* Hero backdrop */}
-      <HeroBackdrop backdropPath={show.backdrop_path} title={show.name}>
-        <div className="flex items-end gap-6 w-full">
-          {/* Poster */}
-          <div className="flex-shrink-0 w-36 h-52 rounded-xl overflow-hidden shadow-card border border-white/10">
-            {show.poster_path ? (
-              <img src={posterUrl(show.poster_path)} alt={show.name} className="poster-img" />
-            ) : (
-              <div className="w-full h-full bg-bg-tertiary flex items-center justify-center text-4xl">📺</div>
+      <div className="show-hero">
+        {show.backdrop_path ? (
+          <img
+            src={backdropUrl(show.backdrop_path)}
+            alt={show.name}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        ) : (
+          <div style={{ width: '100%', height: '100%', background: '#111' }} />
+        )}
+        {/* Gradient overlay */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.85) 100%)',
+        }} />
+        {/* Back + more */}
+        <div style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <button
+            id="back-btn"
+            onClick={() => navigate(-1)}
+            style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(0,0,0,0.5)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+          >
+            <ChevronDown size={20} color="#fff" />
+          </button>
+          <button
+            id="more-btn"
+            style={{ width: 36, height: 36, background: 'none', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+          >
+            <MoreHorizontal size={20} color="#fff" />
+            <span style={{ color: '#fff', fontSize: 20, letterSpacing: 2 }}></span>
+          </button>
+        </div>
+        {/* Title at bottom of hero */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '16px 16px 12px' }}>
+          <h1 style={{ color: '#fff', fontSize: 22, fontWeight: 900, margin: 0, lineHeight: 1.2 }}>{show.name}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+            <span style={{ color: '#ccc', fontSize: 12 }}>
+              {show.number_of_seasons} season{show.number_of_seasons !== 1 ? 's' : ''} • {show.status} • {show.networks?.[0]?.name}
+            </span>
+            {show.vote_average > 0 && (
+              <span style={{ color: '#F5C518', fontSize: 12, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 3 }}>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="#F5C518"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                {(show.vote_average * 10).toFixed(0)}%
+              </span>
             )}
           </div>
+        </div>
+      </div>
 
-          {/* Meta */}
-          <div className="flex-1 min-w-0">
-            <h1 className="text-3xl font-black text-white leading-tight mb-2">{show.name}</h1>
-            <div className="flex flex-wrap items-center gap-3 mb-3">
-              <span className="text-sm text-text-muted">{formatYear(show.first_air_date)}</span>
-              {show.vote_average > 0 && (
-                <span className="flex items-center gap-1 text-sm text-accent-gold font-semibold">
-                  <Star size={14} fill="currentColor" /> {show.vote_average.toFixed(1)}
-                </span>
-              )}
-              <span className="flex items-center gap-1 text-sm text-text-muted">
-                <Tv size={14} /> {show.number_of_seasons} seasons
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {show.genres?.map((g) => (
-                <span key={g.id} className="genre-tag">{g.name}</span>
+      {/* Yellow progress bar */}
+      <div style={{ height: 3, background: '#222' }}>
+        <div style={{ height: '100%', width: `${overallPct}%`, background: barColor, transition: 'width 0.5s ease' }} />
+      </div>
+
+      {/* Action buttons row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        {!watchlistItem ? (
+          <button
+            id="add-btn"
+            onClick={() => addMutation.mutate()}
+            disabled={addMutation.isPending}
+            className="btn-yellow"
+            style={{ flex: 1, padding: '10px 0' }}
+          >
+            <Plus size={16} style={{ marginRight: 6 }} /> ADD TO LIST
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={toggleFavorite}
+              style={{ padding: '8px 16px', borderRadius: 50, border: `1px solid rgba(255,255,255,0.15)`, background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, color: watchlistItem?.isFavorite ? '#E53935' : '#fff', fontSize: 13 }}
+            >
+              <Heart size={16} fill={watchlistItem?.isFavorite ? 'currentColor' : 'none'} />
+              {watchlistItem?.isFavorite ? 'Favorited' : 'Favorite'}
+            </button>
+            <button
+              onClick={() => removeMutation.mutate()}
+              style={{ padding: '8px 16px', borderRadius: 50, border: '1px solid rgba(255,0,0,0.3)', background: 'none', cursor: 'pointer', color: '#E53935', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Trash2 size={14} /> Remove
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* ABOUT / EPISODES tabs */}
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        {['about', 'episodes'].map((tab) => (
+          <button
+            key={tab}
+            id={`tab-${tab}`}
+            onClick={() => setActiveTab(tab)}
+            className="top-tab"
+            style={{
+              color: activeTab === tab ? '#fff' : '#555',
+              borderBottom: activeTab === tab ? '2px solid #fff' : '2px solid transparent',
+              textTransform: 'uppercase',
+            }}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <AnimatePresence mode="wait">
+        {activeTab === 'about' && (
+          <motion.div
+            key="about"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            style={{ padding: 16 }}
+          >
+            {show.overview && (
+              <p style={{ color: '#aaa', fontSize: 14, lineHeight: 1.7, marginBottom: 20 }}>{show.overview}</p>
+            )}
+
+            {/* Details grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 20 }}>
+              {[
+                { label: 'Network', val: show.networks?.[0]?.name },
+                { label: 'Episodes', val: show.number_of_episodes },
+                { label: 'Runtime', val: show.episode_run_time?.[0] ? formatMinutes(show.episode_run_time[0]) : null },
+                { label: 'Status', val: show.status },
+                { label: 'First Air', val: show.first_air_date?.split('-')[0] },
+                { label: 'Language', val: show.original_language?.toUpperCase() },
+              ].filter((d) => d.val).map(({ label, val }) => (
+                <div key={label} style={{ background: '#111', borderRadius: 8, padding: '10px 12px' }}>
+                  <p style={{ color: '#666', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</p>
+                  <p style={{ color: '#fff', fontSize: 14, fontWeight: 600 }}>{val}</p>
+                </div>
               ))}
             </div>
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-3">
-              {!watchlistItem ? (
-                <button
-                  onClick={() => addMutation.mutate()}
-                  disabled={addMutation.isPending}
-                  className="btn-primary"
-                >
-                  <Plus size={16} /> Add to List
-                </button>
-              ) : (
-                <>
-                  <span className="flex items-center gap-1.5 text-sm text-accent-green font-semibold">
-                    <Check size={16} /> In your list
-                  </span>
-                  <button
-                    onClick={toggleFavorite}
-                    className={`btn-ghost ${watchlistItem?.isFavorite ? 'text-red-400' : 'text-text-muted'}`}
-                  >
-                    <Heart size={16} fill={watchlistItem?.isFavorite ? 'currentColor' : 'none'} />
-                  </button>
-                  <button
-                    onClick={() => removeMutation.mutate()}
-                    className="btn-ghost text-red-400/70 hover:text-red-400"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </HeroBackdrop>
-
-      <div className="px-6 space-y-8">
-        {/* Back button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-sm text-text-muted hover:text-white transition-colors"
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
-
-        {/* Tabs */}
-        <div className="flex gap-1 glass p-1 rounded-xl w-fit">
-          {['about', 'episodes'].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold capitalize transition-all ${
-                activeTab === tab
-                  ? 'bg-accent-violet text-white shadow-glow-violet'
-                  : 'text-text-muted hover:text-white'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        {/* About tab */}
-        <AnimatePresence mode="wait">
-          {activeTab === 'about' && (
-            <motion.div
-              key="about"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="space-y-6"
-            >
-              {/* Overview */}
+            {/* Cast */}
+            {cast.length > 0 && (
               <div>
-                <h3 className="font-bold text-white mb-2">Overview</h3>
-                <p className="text-text-secondary leading-relaxed text-sm">{show.overview || 'No overview available.'}</p>
-              </div>
-
-              {/* Details */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {show.networks?.[0] && (
-                  <div className="card p-4">
-                    <p className="text-xs text-text-muted mb-1">Network</p>
-                    <p className="font-semibold text-white text-sm">{show.networks[0].name}</p>
-                  </div>
-                )}
-                <div className="card p-4">
-                  <p className="text-xs text-text-muted mb-1">Episodes</p>
-                  <p className="font-semibold text-white text-sm">{show.number_of_episodes}</p>
-                </div>
-                {show.episode_run_time?.[0] && (
-                  <div className="card p-4">
-                    <p className="text-xs text-text-muted mb-1">Runtime</p>
-                    <p className="font-semibold text-white text-sm">{formatMinutes(show.episode_run_time[0])}</p>
-                  </div>
-                )}
-                <div className="card p-4">
-                  <p className="text-xs text-text-muted mb-1">Status</p>
-                  <p className="font-semibold text-white text-sm">{show.status}</p>
-                </div>
-              </div>
-
-              {/* Cast */}
-              {cast.length > 0 && (
-                <div>
-                  <h3 className="font-bold text-white mb-3 flex items-center gap-2">
-                    <Users size={16} className="text-accent-violet" /> Cast
-                  </h3>
-                  <div className="flex gap-3 scroll-x pb-2">
-                    {cast.map((person) => (
-                      <div key={person.id} className="flex-shrink-0 w-20 text-center">
-                        <div className="w-16 h-16 rounded-full overflow-hidden bg-bg-tertiary mx-auto mb-1.5 border border-surface-border">
-                          {person.profile_path ? (
-                            <img src={profileUrl(person.profile_path)} alt={person.name} className="poster-img" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xl">👤</div>
-                          )}
-                        </div>
-                        <p className="text-xs font-medium text-white truncate">{person.name}</p>
-                        <p className="text-[10px] text-text-muted truncate">{person.character}</p>
+                <h3 style={{ color: '#fff', fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Cast</h3>
+                <div className="scroll-x" style={{ display: 'flex', gap: 12, paddingBottom: 8 }}>
+                  {cast.map((person) => (
+                    <div key={person.id} style={{ flexShrink: 0, width: 64, textAlign: 'center' }}>
+                      <div style={{ width: 56, height: 56, borderRadius: '50%', overflow: 'hidden', background: '#1a1a1a', margin: '0 auto 6px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                        {person.profile_path ? (
+                          <img src={profileUrl(person.profile_path)} alt={person.name} className="poster-img" />
+                        ) : (
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>👤</div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {/* Episodes tab */}
-          {activeTab === 'episodes' && (
-            <motion.div
-              key="episodes"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="space-y-4"
-            >
-              {/* Season selector + progress */}
-              <div className="flex items-center justify-between">
-                <SeasonSelector
-                  seasons={validSeasons}
-                  selected={selectedSeason}
-                  onSelect={setSelectedSeason}
-                />
-                <div className="flex items-center gap-3">
-                  {/* Season progress */}
-                  <div className="text-sm text-text-muted">
-                    <span className="font-bold text-white">{seasonWatched}</span>/{seasonEpisodes.length} watched
-                  </div>
-                  {seasonEpisodes.length > 0 && seasonWatched < seasonEpisodes.length && (
-                    <button
-                      onClick={() => {
-                        const unwatched = seasonEpisodes.filter(
-                          (ep) => !watchedSet[`${selectedSeason}-${ep.episode_number}`]
-                        );
-                        unwatched.forEach((ep) => {
-                          watchMutation.mutate({
-                            season: selectedSeason,
-                            episode: ep.episode_number,
-                            name: ep.name,
-                            runtime: ep.runtime,
-                            airDate: ep.air_date,
-                          });
-                        });
-                        toast.success(`Marked all ${unwatched.length} episodes!`);
-                      }}
-                      className="text-xs btn-ghost text-accent-violet border border-accent-violet/30"
-                    >
-                      Mark all watched
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Season progress bar */}
-              <div className="progress-bar" style={{ height: 4 }}>
-                <div
-                  className="progress-bar-fill"
-                  style={{ width: `${seasonEpisodes.length ? (seasonWatched / seasonEpisodes.length) * 100 : 0}%` }}
-                />
-              </div>
-
-              {/* Episode list */}
-              {seasonLoading ? (
-                <div className="space-y-2">
-                  {[...Array(8)].map((_, i) => (
-                    <div key={i} className="skeleton h-16 rounded-xl" />
+                      <p style={{ color: '#fff', fontSize: 10, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.name}</p>
+                      <p style={{ color: '#555', fontSize: 9, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{person.character}</p>
+                    </div>
                   ))}
                 </div>
-              ) : (
-                <div className="space-y-1">
-                  {seasonEpisodes.map((ep) => {
-                    const key = `${selectedSeason}-${ep.episode_number}`;
-                    const epData = watchedSet[key];
-                    const isWatched = !!epData;
-                    const isNext = nextEpisode?.episode_number === ep.episode_number;
+              </div>
+            )}
+          </motion.div>
+        )}
 
-                    return (
-                      <EpisodeRow
-                        key={ep.id}
-                        episode={ep}
-                        showId={tmdbId}
-                        season={selectedSeason}
-                        isWatched={isWatched}
-                        isNext={!isWatched && isNext}
-                        rewatchCount={epData?.rewatchCount || 0}
-                        onWatch={(s, e, name, runtime, airDate) =>
-                          watchMutation.mutate({ season: s, episode: e, name, runtime, airDate })
-                        }
-                        onUnwatch={(s, e) => unwatchMutation.mutate({ season: s, episode: e })}
-                        onRewatch={(s, e) => rewatchMutation.mutate({ season: s, episode: e })}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {activeTab === 'episodes' && (
+          <motion.div
+            key="episodes"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+          >
+            {validSeasons.map((season) => {
+              const isOpen = !!openSeasons[season.season_number];
+
+              return (
+                <SeasonWithData
+                  key={season.season_number}
+                  season={season}
+                  tmdbId={tmdbId}
+                  isOpen={isOpen}
+                  watchedSet={watchedSet}
+                  onToggle={() => setOpenSeasons((prev) => ({ ...prev, [season.season_number]: !prev[season.season_number] }))}
+                  onWatch={watchMutation.mutate}
+                  onUnwatch={unwatchMutation.mutate}
+                  onRewatch={rewatchMutation.mutate}
+                />
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Sub-component that fetches episodes for a season lazily
+function SeasonWithData({ season, tmdbId, isOpen, watchedSet, onToggle, onWatch, onUnwatch, onRewatch }) {
+  const { data: seasonData, isLoading } = useQuery({
+    queryKey: ['tmdb-season', tmdbId, season.season_number],
+    queryFn: () => showService.getTmdbSeason(tmdbId, season.season_number),
+    enabled: isOpen,
+  });
+
+  const episodes = seasonData?.episodes || [];
+  const seasonWatched = episodes.filter((ep) => watchedSet[`${season.season_number}-${ep.episode_number}`]).length;
+  const total = season.episode_count || episodes.length;
+  const pct = total > 0 ? (seasonWatched / total) * 100 : 0;
+
+  return (
+    <div>
+      {/* Season header */}
+      <div className="season-row" onClick={onToggle}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+          <span style={{ color: '#fff', fontSize: 16, fontWeight: 800 }}>
+            Season {season.season_number}
+          </span>
+          {isOpen ? <ChevronUp size={16} color="#888" /> : <ChevronDown size={16} color="#888" />}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span style={{ color: '#888', fontSize: 13 }}>{seasonWatched}/{total}</span>
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            border: `2px solid ${seasonWatched === total && total > 0 ? '#4CAF50' : 'rgba(255,255,255,0.2)'}`,
+            background: seasonWatched === total && total > 0 ? '#4CAF50' : 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {seasonWatched === total && total > 0 && <Check size={14} color="#fff" strokeWidth={3} />}
+          </div>
+        </div>
       </div>
+      {/* Progress bar */}
+      <div style={{ height: 3, background: '#222' }}>
+        <div style={{ height: '100%', width: `${pct}%`, background: '#F5C518', transition: 'width 0.4s ease' }} />
+      </div>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{ overflow: 'hidden' }}
+          >
+            {isLoading ? (
+              [...Array(4)].map((_, i) => (
+                <div key={i} className="skeleton" style={{ height: 72, margin: '2px 0' }} />
+              ))
+            ) : (
+              episodes.map((ep) => {
+                const key = `${season.season_number}-${ep.episode_number}`;
+                const epData = watchedSet[key];
+                return (
+                  <EpisodeRow
+                    key={ep.id}
+                    episode={ep}
+                    showId={tmdbId}
+                    season={season.season_number}
+                    isWatched={!!epData}
+                    isNext={false}
+                    rewatchCount={epData?.rewatchCount || 0}
+                    onWatch={(s, e, name, runtime, airDate) => onWatch({ season: s, episode: e, name, runtime, airDate })}
+                    onUnwatch={(s, e) => onUnwatch({ season: s, episode: e })}
+                    onRewatch={(s, e) => onRewatch({ season: s, episode: e })}
+                  />
+                );
+              })
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

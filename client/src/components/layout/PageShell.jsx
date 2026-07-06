@@ -1,29 +1,41 @@
-import { motion } from 'framer-motion';
-import Sidebar from './Sidebar';
+import { useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import BottomNav from './BottomNav';
 
 const pageVariants = {
-  initial: { opacity: 0, y: 12 },
+  initial: { opacity: 0, y: 8 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -8 },
+  exit: { opacity: 0, y: -4 },
 };
 
 export default function PageShell({ children }) {
+  const location = useLocation();
+
   return (
-    <div className="flex h-screen overflow-hidden bg-bg-primary">
-      <Sidebar />
-      <motion.main
-        key={location.pathname}
-        variants={pageVariants}
-        initial="initial"
-        animate="animate"
-        exit="exit"
-        transition={{ duration: 0.25, ease: 'easeOut' }}
-        className="flex-1 overflow-y-auto"
-      >
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          {children}
-        </div>
-      </motion.main>
+    <div
+      style={{
+        background: '#000',
+        minHeight: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+      }}
+    >
+      <div className="app-container">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            variants={pageVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="page-content"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
+        <BottomNav />
+      </div>
     </div>
   );
 }

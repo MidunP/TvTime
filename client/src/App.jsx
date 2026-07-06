@@ -14,26 +14,34 @@ import ListDetailPage from './pages/ListDetailPage';
 import UpcomingPage from './pages/UpcomingPage';
 import StatsPage from './pages/StatsPage';
 import ProfilePage from './pages/ProfilePage';
+import MoviesPage from './pages/MoviesPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
       retry: 1,
       refetchOnWindowFocus: false,
     },
   },
 });
 
-// Protected route wrapper
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
   if (loading) {
     return (
-      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-2 border-accent-violet/30 border-t-accent-violet animate-spin" />
-          <p className="text-text-muted text-sm">Loading CineTrack...</p>
+      <div style={{ background: '#000', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+          {/* TV Time style loader: yellow spinner */}
+          <div style={{
+            width: 40, height: 40,
+            border: '3px solid rgba(245,197,24,0.2)',
+            borderTopColor: '#F5C518',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <p style={{ color: '#888', fontSize: 13 }}>Loading...</p>
         </div>
       </div>
     );
@@ -55,20 +63,20 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <PageShell>
-              <AnimatePresence mode="wait">
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/search" element={<SearchPage />} />
-                  <Route path="/show/:id" element={<ShowDetailPage />} />
-                  <Route path="/library" element={<LibraryPage />} />
-                  <Route path="/lists" element={<ListsPage />} />
-                  <Route path="/lists/:id" element={<ListDetailPage />} />
-                  <Route path="/upcoming" element={<UpcomingPage />} />
-                  <Route path="/stats" element={<StatsPage />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </AnimatePresence>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/explore" element={<SearchPage />} />
+                <Route path="/search" element={<SearchPage />} />
+                <Route path="/show/:id" element={<ShowDetailPage />} />
+                <Route path="/library" element={<LibraryPage />} />
+                <Route path="/lists" element={<ListsPage />} />
+                <Route path="/lists/:id" element={<ListDetailPage />} />
+                <Route path="/upcoming" element={<UpcomingPage />} />
+                <Route path="/stats" element={<StatsPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/movies" element={<MoviesPage />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
             </PageShell>
           </ProtectedRoute>
         }
@@ -84,18 +92,19 @@ export default function App() {
         <BrowserRouter>
           <AppRoutes />
           <Toaster
-            position="bottom-right"
+            position="top-center"
             toastOptions={{
-              duration: 3000,
+              duration: 2500,
               style: {
-                background: '#16161f',
-                color: '#f1f1f1',
+                background: '#1a1a1a',
+                color: '#fff',
                 border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '12px',
+                borderRadius: '8px',
                 fontSize: '14px',
+                maxWidth: 380,
               },
-              success: { iconTheme: { primary: '#4ade80', secondary: '#16161f' } },
-              error: { iconTheme: { primary: '#ff6b6b', secondary: '#16161f' } },
+              success: { iconTheme: { primary: '#4CAF50', secondary: '#1a1a1a' } },
+              error: { iconTheme: { primary: '#E53935', secondary: '#1a1a1a' } },
             }}
           />
         </BrowserRouter>

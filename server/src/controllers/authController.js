@@ -12,6 +12,42 @@ const generateTokens = (userId) => {
   return { accessToken, refreshToken };
 };
 
+// POST /api/auth/register
+const register = asyncHandler(async (req, res) => {
+  const { username, password, displayName } = req.body;
+
+  if (!username || !password) {
+    res.status(400);
+    throw new Error('Username and password are required');
+  }
+
+  const existing = await User.findOne({ username: username.toLowerCase().trim() });
+  if (existing) {
+    res.status(409);
+    throw new Error('Username already taken');
+  }
+
+  const user = await User.create({
+    username: username.toLowerCase().trim(),
+    passwordHash: password,
+    displayName: displayName || username,
+  });
+
+  const { accessToken, refreshToken } = generateTokens(user._id);
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+  });
+
+  res.status(201).json({
+    user: user.toJSON(),
+    accessToken,
+  });
+});
+
 // POST /api/auth/login
 const login = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
@@ -81,4 +117,4 @@ const getMe = asyncHandler(async (req, res) => {
   res.json({ user: req.user });
 });
 
-module.exports = { login, refresh, logout, getMe };
+module.exports = { register, login, refresh, logout, getMe };

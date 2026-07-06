@@ -5,49 +5,38 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       colors: {
         bg: {
-          primary: '#0a0a0f',
-          secondary: '#12121a',
-          tertiary: '#1a1a28',
-          card: '#16161f',
-          glass: 'rgba(255, 255, 255, 0.05)',
+          primary: '#000000',
+          secondary: '#111111',
+          card: '#1a1a1a',
+          surface: '#1c1c1c',
         },
         accent: {
-          violet: '#6c63ff',
-          'violet-dim': '#4f48cc',
-          coral: '#ff6b6b',
-          gold: '#ffd700',
-          green: '#4ade80',
-          blue: '#60a5fa',
+          yellow: '#F5C518',
+          'yellow-dark': '#D4A916',
+          green: '#4CAF50',
+          red: '#E53935',
+          blue: '#2196F3',
+          purple: '#9C27B0',
+          orange: '#FF9800',
         },
         surface: {
-          border: 'rgba(255, 255, 255, 0.08)',
-          hover: 'rgba(255, 255, 255, 0.05)',
+          border: 'rgba(255,255,255,0.08)',
+          hover: 'rgba(255,255,255,0.06)',
+        },
+        text: {
+          primary: '#FFFFFF',
+          secondary: '#888888',
+          muted: '#555555',
         },
       },
-      backgroundImage: {
-        'gradient-violet': 'linear-gradient(135deg, #6c63ff, #a855f7)',
-        'gradient-coral': 'linear-gradient(135deg, #ff6b6b, #ff8e53)',
-        'gradient-card': 'linear-gradient(180deg, rgba(108,99,255,0.1) 0%, rgba(10,10,15,0) 100%)',
-      },
-      boxShadow: {
-        'card': '0 4px 24px rgba(0,0,0,0.4)',
-        'card-hover': '0 8px 40px rgba(108,99,255,0.2)',
-        'glow-violet': '0 0 20px rgba(108,99,255,0.4)',
-        'glow-green': '0 0 16px rgba(74,222,128,0.4)',
-      },
-      backdropBlur: {
-        xs: '4px',
-      },
       animation: {
-        'fade-in': 'fadeIn 0.3s ease-out',
-        'slide-up': 'slideUp 0.3s ease-out',
-        'scale-in': 'scaleIn 0.2s ease-out',
-        'shimmer': 'shimmer 2s linear infinite',
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-in': 'fadeIn 0.25s ease-out',
+        'slide-up': 'slideUp 0.25s ease-out',
+        'shimmer': 'shimmer 1.6s linear infinite',
+        'scale-in': 'scaleIn 0.2s cubic-bezier(0.34,1.56,0.64,1)',
       },
       keyframes: {
         fadeIn: {
@@ -55,16 +44,16 @@ export default {
           '100%': { opacity: '1' },
         },
         slideUp: {
-          '0%': { opacity: '0', transform: 'translateY(16px)' },
+          '0%': { opacity: '0', transform: 'translateY(12px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         scaleIn: {
-          '0%': { opacity: '0', transform: 'scale(0.9)' },
+          '0%': { opacity: '0', transform: 'scale(0.85)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
         },
         shimmer: {
-          '0%': { backgroundPosition: '-200% 0' },
-          '100%': { backgroundPosition: '200% 0' },
+          '0%': { backgroundPosition: '-400px 0' },
+          '100%': { backgroundPosition: '400px 0' },
         },
       },
     },
