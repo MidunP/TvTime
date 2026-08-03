@@ -5,3 +5,6 @@
 
 ## [0.2.0] - 2026-08-02
 - Configured Mongoose connection with local MongoDB fallback.
+
+## [0.3.0] - 2026-08-03
+- Added access & refresh JWT token flow.
