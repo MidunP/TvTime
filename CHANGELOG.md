@@ -8,3 +8,6 @@
 
 ## [0.3.0] - 2026-08-03
 - Added access & refresh JWT token flow.
+
+## [0.4.0] - 2026-08-04
+- Integrated TMDb API service with mock fallbacks.
