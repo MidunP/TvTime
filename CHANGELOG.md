@@ -14,3 +14,6 @@
 
 ## [0.5.0] - 2026-08-05
 - Added watchlist endpoints for adding, updating, and removing shows.
+
+## [0.6.0] - 2026-08-06
+- Added episode tracking, rewatch counter, and watching statistics.
