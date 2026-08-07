@@ -17,3 +17,6 @@
 
 ## [0.6.0] - 2026-08-06
 - Added episode tracking, rewatch counter, and watching statistics.
+
+## [0.7.0] - 2026-08-07
+- Custom lists support with emoji badges and collage poster cache.
