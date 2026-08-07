@@ -6,3 +6,6 @@
 
 - POST /api/shows/add
 - PUT /api/shows/:tmdbId/status
+
+- POST /api/lists
+- PUT /api/lists/:id/reorder
