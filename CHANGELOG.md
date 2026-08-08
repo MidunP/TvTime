@@ -20,3 +20,6 @@
 
 ## [0.7.0] - 2026-08-07
 - Custom lists support with emoji badges and collage poster cache.
+
+## [0.8.0] - 2026-08-08
+- Implemented social activity feed and user follow system.
