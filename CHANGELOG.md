@@ -23,3 +23,6 @@
 
 ## [0.8.0] - 2026-08-08
 - Implemented social activity feed and user follow system.
+
+## [0.9.0] - 2026-08-09
+- Client auto-detects backend availability and seamlessly switches between API & localStorage.
