@@ -26,3 +26,6 @@
 
 ## [0.9.0] - 2026-08-09
 - Client auto-detects backend availability and seamlessly switches between API & localStorage.
+
+## [1.0.0-rc1] - 2026-08-10
+- Modernized design system with Plus Jakarta Sans and glassmorphic elements.
