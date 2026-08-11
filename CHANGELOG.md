@@ -29,3 +29,6 @@
 
 ## [1.0.0-rc1] - 2026-08-10
 - Modernized design system with Plus Jakarta Sans and glassmorphic elements.
+
+## [1.0.0-rc2] - 2026-08-11
+- Hardened API security headers (Helmet) and HPP protection.
