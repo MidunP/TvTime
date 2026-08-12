@@ -32,3 +32,6 @@
 
 ## [1.0.0-rc2] - 2026-08-11
 - Hardened API security headers (Helmet) and HPP protection.
+
+## [1.0.0-rc3] - 2026-08-12
+- Enforced Zod schema validation across all mutation endpoints.
