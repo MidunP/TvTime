@@ -1,12 +1,17 @@
 require('dotenv').config();
+const env = require('./src/config/validateEnv');
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const hpp = require('hpp');
+const mongoSanitize = require('express-mongo-sanitize');
 
 const connectDB = require('./src/config/db');
 const errorHandler = require('./src/middleware/errorHandler');
+const { apiLimiter } = require('./src/middleware/rateLimiter');
 
 // Routes
 const authRoutes = require('./src/routes/auth');
@@ -18,35 +23,51 @@ const tmdbRoutes = require('./src/routes/tmdb');
 const socialRoutes = require('./src/routes/social');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = env.PORT;
 
-// Security
-app.use(helmet());
+// ── Security ─────────────────────────────────────────────
+app.use(helmet());                 // Secure HTTP headers
+app.use(hpp());                    // Prevent HTTP parameter pollution
 
-// CORS — allow client dev + production
+// Express 5 compatible NoSQL injection sanitizer (mutates objects in-place)
+app.use((req, res, next) => {
+  if (req.body) mongoSanitize.sanitize(req.body);
+  if (req.params) mongoSanitize.sanitize(req.params);
+  if (req.query) mongoSanitize.sanitize(req.query);
+  next();
+});
+
+// ── CORS — origins read from CLIENT_URLS env var ─────────
+const allowedOrigins = env.CLIENT_URLS
+  .split(',')
+  .map((url) => url.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: [
-      process.env.CLIENT_URL || 'http://localhost:5173',
-      'https://cinetrack.vercel.app', // Update with your Vercel URL
-    ],
+    origin: allowedOrigins,
     credentials: true,
   })
 );
 
-// Body parsing
+// ── Body parsing ─────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(cookieParser());
 
-// Logging (only in dev)
-if (process.env.NODE_ENV === 'development') {
+// ── Rate limiting (global) ───────────────────────────────
+app.use('/api', apiLimiter);
+
+// ── Logging ──────────────────────────────────────────────
+if (env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Health check
-app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+// ── Health check ─────────────────────────────────────────
+app.get('/health', (req, res) =>
+  res.json({ status: 'ok', environment: env.NODE_ENV, timestamp: new Date().toISOString() })
+);
 
-// API routes
+// ── API routes ───────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/shows', showRoutes);
 app.use('/api/episodes', episodeRoutes);
@@ -55,33 +76,35 @@ app.use('/api/stats', statsRoutes);
 app.use('/api/tmdb', tmdbRoutes);
 app.use('/api/social', socialRoutes);
 
-// 404 handler
+// ── 404 handler ──────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
 
-// Global error handler
+// ── Global error handler ─────────────────────────────────
 app.use(errorHandler);
 
-// Seed admin user on first startup
+// ── Seed admin user on first startup ─────────────────────
+// Credentials MUST come from env — no hardcoded fallbacks
 async function seedAdminUser() {
   const User = require('./src/models/User');
-  const username = process.env.ADMIN_USERNAME || 'midun';
-  const password = process.env.ADMIN_PASSWORD || 'changeme123';
+  const username = env.ADMIN_USERNAME;
+  const password = env.ADMIN_PASSWORD;
 
   const existing = await User.findOne({ username });
   if (!existing) {
-    await User.create({ username, passwordHash: password, displayName: 'Midun' });
+    await User.create({ username, passwordHash: password, displayName: username });
     console.log(`✅ Admin user "${username}" created`);
   }
 }
 
-// Start server
+// ── Start server ─────────────────────────────────────────
 connectDB().then(async (conn) => {
   if (conn) {
     await seedAdminUser();
   }
   app.listen(PORT, () => {
-    console.log(`🚀 CineTrack server running on port ${PORT}`);
+    console.log(`🚀 CineTrack server running on port ${PORT} [${env.NODE_ENV}]`);
+    console.log(`   CORS origins: ${allowedOrigins.join(', ')}`);
   });
 });

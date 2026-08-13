@@ -50,31 +50,63 @@ const unfollowUser = asyncHandler(async (req, res) => {
     res.json({ message: 'Unfollowed successfully' });
 });
 
-// GET /api/social/followers/:userId
+// GET /api/social/followers/:userId?page=1&limit=20
 const getFollowers = asyncHandler(async (req, res) => {
-    const follows = await Follow.find({ followingId: req.params.userId })
-        .populate('followerId', 'username displayName avatar')
-        .sort({ createdAt: -1 });
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const [follows, total] = await Promise.all([
+        Follow.find({ followingId: req.params.userId })
+            .populate('followerId', 'username displayName avatar')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+        Follow.countDocuments({ followingId: req.params.userId }),
+    ]);
 
     const followers = follows.map((f) => f.followerId);
-    res.json({ followers, count: followers.length });
+    res.json({
+        followers,
+        count: total,
+        page,
+        totalPages: Math.ceil(total / limit),
+    });
 });
 
-// GET /api/social/following/:userId
+// GET /api/social/following/:userId?page=1&limit=20
 const getFollowing = asyncHandler(async (req, res) => {
-    const follows = await Follow.find({ followerId: req.params.userId })
-        .populate('followingId', 'username displayName avatar')
-        .sort({ createdAt: -1 });
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const [follows, total] = await Promise.all([
+        Follow.find({ followerId: req.params.userId })
+            .populate('followingId', 'username displayName avatar')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+        Follow.countDocuments({ followerId: req.params.userId }),
+    ]);
 
     const following = follows.map((f) => f.followingId);
-    res.json({ following, count: following.length });
+    res.json({
+        following,
+        count: total,
+        page,
+        totalPages: Math.ceil(total / limit),
+    });
 });
 
-// GET /api/social/feed — Hybrid Fan-Out Activity Feed for user
+// GET /api/social/feed?page=1&limit=30
 const getFeed = asyncHandler(async (req, res) => {
-    const cacheKey = `feed:${req.user._id}`;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 30));
+    const skip = (page - 1) * limit;
 
-    const feed = await cacheService.getOrSet(cacheKey, async () => {
+    const cacheKey = `feed:${req.user._id}:p${page}`;
+
+    const result = await cacheService.getOrSet(cacheKey, async () => {
         // 1. Get users followed by req.user
         const following = await Follow.find({ followerId: req.user._id }).select('followingId');
         const followingUserIds = following.map((f) => f.followingId);
@@ -82,15 +114,24 @@ const getFeed = asyncHandler(async (req, res) => {
         // Include user's own activity + followed users' activity
         const userIds = [req.user._id, ...followingUserIds];
 
-        // 2. Fetch latest activities from ActivityFeed
-        const activities = await ActivityFeed.find({ userId: { $in: userIds } })
-            .sort({ createdAt: -1 })
-            .limit(30);
+        // 2. Fetch paginated activities from ActivityFeed
+        const [activities, total] = await Promise.all([
+            ActivityFeed.find({ userId: { $in: userIds } })
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            ActivityFeed.countDocuments({ userId: { $in: userIds } }),
+        ]);
 
-        return activities;
+        return { activities, total };
     }, 60); // Cache for 60 seconds
 
-    res.json({ feed });
+    res.json({
+        feed: result.activities,
+        count: result.total,
+        page,
+        totalPages: Math.ceil(result.total / limit),
+    });
 });
 
 // POST /api/social/activity — Record a user activity

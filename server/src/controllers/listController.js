@@ -7,13 +7,9 @@ const getLists = asyncHandler(async (req, res) => {
   res.json({ lists });
 });
 
-// POST /api/lists
+// POST /api/lists — body validated by Zod (createListSchema)
 const createList = asyncHandler(async (req, res) => {
   const { name, emoji, description, isPrivate } = req.body;
-  if (!name) {
-    res.status(400);
-    throw new Error('List name is required');
-  }
 
   const list = await CustomList.create({
     userId: req.user._id,

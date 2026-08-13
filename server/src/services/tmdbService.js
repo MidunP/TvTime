@@ -1,14 +1,18 @@
 const axios = require('axios');
 
-const tmdbKey = process.env.TMDB_API_KEY && process.env.TMDB_API_KEY !== 'your_tmdb_api_key_here'
+// USE_MOCK=true forces mock data regardless of whether TMDB_API_KEY is set
+const useMock = process.env.USE_MOCK === 'true';
+const tmdbKey = !useMock && process.env.TMDB_API_KEY && process.env.TMDB_API_KEY !== 'your_tmdb_api_key_here'
   ? process.env.TMDB_API_KEY
   : null;
 
-const tmdb = axios.create({
-  baseURL: process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3',
-  params: tmdbKey ? { api_key: tmdbKey } : {},
-  timeout: 10000,
-});
+const tmdb = tmdbKey
+  ? axios.create({
+    baseURL: process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3',
+    params: { api_key: tmdbKey },
+    timeout: 8000,
+  })
+  : null;
 
 const MOCK_BACKEND_SHOWS = [
   {
@@ -78,7 +82,7 @@ const MOCK_BACKEND_SHOWS = [
 
 const tmdbService = {
   async searchShows(query, page = 1) {
-    if (tmdbKey) {
+    if (tmdb) {
       try {
         const res = await tmdb.get('/search/tv', { params: { query, page } });
         return res.data;
@@ -86,8 +90,9 @@ const tmdbService = {
         console.warn('⚠️ TMDb API failed, returning mock search:', e.message);
       }
     }
+    // Mock fallback
     const matches = MOCK_BACKEND_SHOWS.filter((s) => s.name.toLowerCase().includes(query.toLowerCase()));
-    if (matches.length > 0) return { results: matches };
+    if (matches.length > 0) return { results: matches, page: 1, total_pages: 1, total_results: matches.length };
 
     return {
       results: [
@@ -103,11 +108,14 @@ const tmdbService = {
           number_of_episodes: 10,
         },
       ],
+      page: 1,
+      total_pages: 1,
+      total_results: 1,
     };
   },
 
   async getShow(tmdbId) {
-    if (tmdbKey) {
+    if (tmdb) {
       try {
         const res = await tmdb.get(`/tv/${tmdbId}`, {
           params: { append_to_response: 'credits,content_ratings,videos,external_ids' },
@@ -142,7 +150,7 @@ const tmdbService = {
   },
 
   async getSeason(tmdbId, seasonNumber) {
-    if (tmdbKey) {
+    if (tmdb) {
       try {
         const res = await tmdb.get(`/tv/${tmdbId}/season/${seasonNumber}`);
         return res.data;
@@ -166,7 +174,7 @@ const tmdbService = {
   },
 
   async getTrending() {
-    if (tmdbKey) {
+    if (tmdb) {
       try {
         const res = await tmdb.get('/trending/tv/week');
         return res.data;
@@ -178,7 +186,7 @@ const tmdbService = {
   },
 
   async getPopular(page = 1) {
-    if (tmdbKey) {
+    if (tmdb) {
       try {
         const res = await tmdb.get('/tv/popular', { params: { page } });
         return res.data;
@@ -190,7 +198,7 @@ const tmdbService = {
   },
 
   async getShowsByIds(ids) {
-    if (tmdbKey) {
+    if (tmdb) {
       const shows = await Promise.allSettled(
         ids.map((id) => tmdb.get(`/tv/${id}`).then((r) => r.data))
       );
@@ -198,7 +206,7 @@ const tmdbService = {
         .filter((r) => r.status === 'fulfilled')
         .map((r) => r.value);
     }
-    return ids.map((id) => this.getShow(id));
+    return Promise.all(ids.map((id) => this.getShow(id)));
   },
 };
 

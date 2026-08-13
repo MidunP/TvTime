@@ -6,8 +6,12 @@ const connectDB = async () => {
     uri = 'mongodb://127.0.0.1:27017/cinetrack';
   }
 
+  const options = {
+    maxPoolSize: 20,   // Cap connections — prevents exhausting DB provider limits
+  };
+
   try {
-    const conn = await mongoose.connect(uri);
+    const conn = await mongoose.connect(uri, options);
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
@@ -15,7 +19,7 @@ const connectDB = async () => {
     if (uri !== 'mongodb://127.0.0.1:27017/cinetrack') {
       try {
         console.log('🔄 Attempting connection to local MongoDB: mongodb://127.0.0.1:27017/cinetrack');
-        const conn = await mongoose.connect('mongodb://127.0.0.1:27017/cinetrack');
+        const conn = await mongoose.connect('mongodb://127.0.0.1:27017/cinetrack', options);
         console.log(`✅ MongoDB Connected locally: ${conn.connection.host}`);
         return conn;
       } catch (localErr) {

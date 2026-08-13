@@ -48,4 +48,7 @@ const watchlistItemSchema = new mongoose.Schema(
 // Compound unique index: one entry per user per show
 watchlistItemSchema.index({ userId: 1, tmdbShowId: 1 }, { unique: true });
 
+// Query index: filter by user + status (watchlist page)
+watchlistItemSchema.index({ userId: 1, status: 1, lastWatchedAt: -1 });
+
 module.exports = mongoose.model('WatchlistItem', watchlistItemSchema);

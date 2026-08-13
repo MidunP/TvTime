@@ -12,14 +12,9 @@ const generateTokens = (userId) => {
   return { accessToken, refreshToken };
 };
 
-// POST /api/auth/register
+// POST /api/auth/register — body validated by Zod (registerSchema)
 const register = asyncHandler(async (req, res) => {
   const { username, password, displayName } = req.body;
-
-  if (!username || !password) {
-    res.status(400);
-    throw new Error('Username and password are required');
-  }
 
   const existing = await User.findOne({ username: username.toLowerCase().trim() });
   if (existing) {
@@ -48,14 +43,9 @@ const register = asyncHandler(async (req, res) => {
   });
 });
 
-// POST /api/auth/login
+// POST /api/auth/login — body validated by Zod (loginSchema)
 const login = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
-
-  if (!username || !password) {
-    res.status(400);
-    throw new Error('Username and password are required');
-  }
 
   const user = await User.findOne({ username: username.toLowerCase().trim() });
   if (!user || !(await user.comparePassword(password))) {
