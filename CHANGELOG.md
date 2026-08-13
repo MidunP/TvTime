@@ -35,3 +35,6 @@
 
 ## [1.0.0-rc3] - 2026-08-12
 - Enforced Zod schema validation across all mutation endpoints.
+
+## [1.0.0] - 2026-08-13
+- Added multi-stage Dockerfile and GitHub Actions CI workflow.
