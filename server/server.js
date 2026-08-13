@@ -15,6 +15,7 @@ const episodeRoutes = require('./src/routes/episodes');
 const listRoutes = require('./src/routes/lists');
 const statsRoutes = require('./src/routes/stats');
 const tmdbRoutes = require('./src/routes/tmdb');
+const socialRoutes = require('./src/routes/social');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -52,6 +53,7 @@ app.use('/api/episodes', episodeRoutes);
 app.use('/api/lists', listRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/tmdb', tmdbRoutes);
+app.use('/api/social', socialRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -75,8 +77,10 @@ async function seedAdminUser() {
 }
 
 // Start server
-connectDB().then(async () => {
-  await seedAdminUser();
+connectDB().then(async (conn) => {
+  if (conn) {
+    await seedAdminUser();
+  }
   app.listen(PORT, () => {
     console.log(`🚀 CineTrack server running on port ${PORT}`);
   });

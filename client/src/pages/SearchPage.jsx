@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { showService } from '../services/showService';
 import { posterUrl } from '../utils/tmdbImageUrl';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Check } from 'lucide-react';
+import { Plus, Check, Search, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 function useDebounce(value, delay) {
@@ -18,6 +18,7 @@ function useDebounce(value, delay) {
 
 function SearchResultRow({ show, isInList, onAdd }) {
   const [adding, setAdding] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const navigate = useNavigate();
   const poster = show.poster_path ? posterUrl(show.poster_path) : null;
 
@@ -27,7 +28,7 @@ function SearchResultRow({ show, isInList, onAdd }) {
     setAdding(true);
     try {
       await onAdd(show);
-      toast.success(`${show.name} added!`);
+      toast.success(`${show.name || show.title} added!`);
     } catch {
       toast.error('Failed to add');
     } finally {
@@ -38,71 +39,75 @@ function SearchResultRow({ show, isInList, onAdd }) {
   const isTV = show.media_type !== 'movie' || show.first_air_date;
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
       onClick={() => navigate(`/show/${show.id}`)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '10px 16px',
-        borderBottom: '1px solid rgba(255,255,255,0.05)',
-        cursor: 'pointer',
-      }}
+      className="glass-panel p-3 flex items-center gap-3.5 mb-2.5 cursor-pointer hover:border-[#FFD500]/40 transition-all hover:shadow-[0_4px_20px_rgba(255,213,0,0.1)] group"
     >
-      {/* Poster */}
-      <div style={{ flexShrink: 0, width: 48, height: 64, borderRadius: 4, overflow: 'hidden', background: '#1a1a1a' }}>
-        {poster ? (
-          <img src={poster} alt={show.name} className="poster-img" />
+      {/* Poster Thumbnail */}
+      <div className="w-14 h-20 rounded-lg overflow-hidden bg-slate-900 flex-shrink-0 relative border border-white/10 group-hover:border-[#FFD500]/30">
+        {poster && !imgError ? (
+          <img
+            src={poster}
+            alt={show.name || show.title}
+            onError={() => setImgError(true)}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+          />
         ) : (
-          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📺</div>
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950 p-1 text-center">
+            <span className="text-xl">📺</span>
+          </div>
         )}
       </div>
 
       {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ color: '#fff', fontSize: 15, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div className="flex-1 min-w-0">
+        <h4 className="text-sm font-extrabold text-white truncate group-hover:text-[#FFD500] transition-colors">
           {show.name || show.title}
-        </p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-          {isTV ? (
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
-          ) : (
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><rect x="2" y="2" width="20" height="20" rx="2.18"/><line x1="7" y1="2" x2="7" y2="22"/></svg>
-          )}
-          <span style={{ color: '#888', fontSize: 12 }}>
-            {show.vote_count?.toLocaleString() || 0} added this {isTV ? 'show' : 'movie'}
+        </h4>
+        <div className="flex items-center gap-2 mt-1">
+          <span className="px-2 py-0.5 rounded-full bg-slate-800/80 border border-white/10 text-[10px] font-bold text-slate-300">
+            {isTV ? 'TV Series' : 'Movie'}
+          </span>
+          <span className="text-xs text-slate-400 font-medium">
+            {(show.first_air_date || show.release_date)?.split('-')[0] || 'Unknown'}
           </span>
         </div>
+        <p className="text-xs text-slate-400 mt-1 line-clamp-1">
+          {show.overview || `${show.vote_count?.toLocaleString() || 0} users tracking this`}
+        </p>
       </div>
 
-      {/* Add button — yellow square */}
+      {/* Add button */}
       <button
         onClick={handleAdd}
-        className="btn-add"
+        className={`btn-add ${isInList ? '!border-[#10B981] !color-[#10B981] bg-[#10B981]/10' : ''}`}
         aria-label={isInList ? 'Added' : 'Add to list'}
-        style={{ borderColor: isInList ? '#4CAF50' : '#F5C518', color: isInList ? '#4CAF50' : '#F5C518' }}
       >
         {adding ? (
-          <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-            style={{ width: 14, height: 14, border: '2px solid rgba(245,197,24,0.3)', borderTopColor: '#F5C518', borderRadius: '50%' }} />
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+            className="w-4 h-4 border-2 border-[#FFD500]/30 border-t-[#FFD500] rounded-full"
+          />
         ) : isInList ? (
-          <Check size={16} />
+          <Check size={18} className="text-[#10B981]" />
         ) : (
-          <Plus size={18} />
+          <Plus size={20} className="text-[#FFD500]" />
         )}
       </button>
-    </div>
+    </motion.div>
   );
 }
 
-const EXPLORE_TABS = ['FEED', 'DISCOVER', 'GROUPS', 'ACTIVITY'];
+const EXPLORE_TABS = ['DISCOVER', 'TRENDING', 'RECOMMENDED'];
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [searchActive, setSearchActive] = useState(false);
-  const [searchTab, setSearchTab] = useState('SHOWS & MOVIES');
-  const [exploreTab, setExploreTab] = useState('FEED');
-  const debouncedQuery = useDebounce(query, 400);
+  const [exploreTab, setExploreTab] = useState('DISCOVER');
+  const debouncedQuery = useDebounce(query, 300);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -139,67 +144,53 @@ export default function SearchPage() {
   const results = searchData?.results || [];
 
   return (
-    <div style={{ background: '#000', minHeight: '100vh' }}>
-      {/* Search bar */}
-      <div style={{ padding: '12px 16px 0', display: 'flex', alignItems: 'center', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input
-            id="search-input"
-            type="text"
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); setSearchActive(true); }}
-            onFocus={() => setSearchActive(true)}
-            placeholder="Search shows and movies..."
-            className="search-input"
-            style={{ paddingBottom: 12 }}
-          />
-          {isFetching && (
-            <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
-              style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.1)', borderTopColor: '#F5C518', borderRadius: '50%', flexShrink: 0 }} />
-          )}
-        </div>
-        {searchActive && (
+    <div className="space-y-6 min-h-screen">
+      {/* Search Input Bar */}
+      <div className="glass-panel p-2 flex items-center gap-3">
+        <Search size={20} className="text-[#FFD500] ml-3 flex-shrink-0" />
+        <input
+          id="search-input"
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setSearchActive(true); }}
+          onFocus={() => setSearchActive(true)}
+          placeholder="Search TV shows, movies, anime..."
+          className="w-full bg-transparent text-white placeholder-slate-400 outline-none text-base py-2 font-medium"
+        />
+        {query && (
           <button
             onClick={() => { setQuery(''); setSearchActive(false); }}
-            style={{ background: 'none', border: 'none', color: '#2196F3', fontSize: 15, fontWeight: 600, cursor: 'pointer', paddingBottom: 12 }}
+            className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors mr-2"
           >
-            Cancel
+            <X size={18} />
           </button>
         )}
       </div>
 
       {searchActive && query.length >= 2 ? (
-        /* Search results view */
-        <div>
-          {/* Sub-tabs */}
-          <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '0 16px' }}>
-            {['SHOWS & MOVIES', 'USERS', 'GROUPS'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setSearchTab(tab)}
-                className="search-tab"
-                style={{
-                  color: searchTab === tab ? '#fff' : '#555',
-                  borderBottom: searchTab === tab ? '2px solid #fff' : '2px solid transparent',
-                  padding: '10px 0',
-                  marginRight: 16,
-                  flex: 'none',
-                  fontSize: 11,
-                }}
-              >
-                {tab}
-              </button>
-            ))}
+        /* Results View */
+        <div className="space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+              Search Results for "{query}"
+            </span>
+            {isFetching && (
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+                className="w-4 h-4 border-2 border-[#FFD500]/30 border-t-[#FFD500] rounded-full"
+              />
+            )}
           </div>
 
-          {/* Results */}
           {results.length === 0 && !isFetching ? (
-            <div style={{ textAlign: 'center', padding: '60px 24px' }}>
-              <p style={{ color: '#888', fontSize: 15 }}>No results for "{query}"</p>
+            <div className="glass-panel text-center py-16 px-6">
+              <span className="text-5xl block mb-3">🔍</span>
+              <p className="text-white font-bold text-lg mb-1">No shows found</p>
+              <p className="text-slate-400 text-sm">Try checking your spelling or searching for a different title.</p>
             </div>
           ) : (
-            <div>
+            <div className="space-y-2">
               {results.slice(0, 20).map((show) => (
                 <SearchResultRow
                   key={show.id}
@@ -212,63 +203,46 @@ export default function SearchPage() {
           )}
         </div>
       ) : (
-        /* Explore default view */
-        <div>
-          {/* Explore tabs */}
-          <div className="scroll-x" style={{ display: 'flex', gap: 8, padding: '14px 16px 0' }}>
+        /* Explore Section */
+        <div className="space-y-6">
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scroll-x">
             {EXPLORE_TABS.map((tab) => (
               <button
                 key={tab}
                 onClick={() => setExploreTab(tab)}
-                style={{
-                  flexShrink: 0,
-                  padding: '8px 18px',
-                  borderRadius: 50,
-                  border: 'none',
-                  background: exploreTab === tab ? '#F5C518' : 'rgba(255,255,255,0.1)',
-                  color: exploreTab === tab ? '#000' : '#fff',
-                  fontSize: 13,
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
+                className={`px-5 py-2 rounded-full text-xs font-extrabold tracking-wider transition-all flex-shrink-0 ${exploreTab === tab
+                    ? 'bg-[#FFD500] text-[#0A0A0F] shadow-[0_4px_16px_rgba(255,213,0,0.3)] scale-105'
+                    : 'bg-slate-900/80 text-slate-300 border border-white/10 hover:border-white/20'
+                  }`}
               >
                 {tab}
               </button>
             ))}
           </div>
 
-          {/* Trending shows grid */}
-          <div style={{ padding: '16px 16px 0' }}>
-            {(trending?.results || []).slice(0, 6).map((show) => (
-              <div
-                key={show.id}
-                onClick={() => navigate(`/show/${show.id}`)}
-                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
-              >
-                <div style={{ width: 48, height: 64, borderRadius: 4, overflow: 'hidden', background: '#1a1a1a', flexShrink: 0 }}>
-                  {show.poster_path ? (
-                    <img src={posterUrl(show.poster_path)} alt={show.name} className="poster-img" />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>📺</div>
-                  )}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ color: '#fff', fontSize: 15, fontWeight: 600 }}>{show.name || show.title}</p>
-                  <p style={{ color: '#888', fontSize: 12, marginTop: 2 }}>{show.vote_count?.toLocaleString()} added this show</p>
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleAddShow(show); }}
-                  className="btn-add"
-                  style={{ borderColor: watchlistIds.has(show.id) ? '#4CAF50' : '#F5C518', color: watchlistIds.has(show.id) ? '#4CAF50' : '#F5C518' }}
-                >
-                  {watchlistIds.has(show.id) ? <Check size={16} /> : <Plus size={18} />}
-                </button>
-              </div>
-            ))}
+          {/* Trending Grid */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="section-pill">
+                🔥 TRENDING TV SHOWS
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {(trending?.results || []).map((show) => (
+                <SearchResultRow
+                  key={show.id}
+                  show={show}
+                  isInList={watchlistIds.has(show.id)}
+                  onAdd={handleAddShow}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
+

@@ -5,7 +5,7 @@ import { mockAuthService } from './mockAuthService';
 let _backendAvailable = null;
 let _checkPromise = null;
 
-async function checkBackend() {
+export async function checkBackend() {
   if (_backendAvailable !== null) return _backendAvailable;
   if (_checkPromise) return _checkPromise;
 

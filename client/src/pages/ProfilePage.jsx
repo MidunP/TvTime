@@ -1,15 +1,16 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../context/AuthContext';
 import { showService } from '../services/showService';
 import { listService } from '../services/listService';
-import api from '../services/api';
 import { posterUrl } from '../utils/tmdbImageUrl';
 import { useNavigate, Link } from 'react-router-dom';
-import { ChevronRight, Heart } from 'lucide-react';
+import { ChevronRight, Heart, Tv, Film, Bell, MoreHorizontal, User } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [imgError, setImgError] = useState(false);
 
   const { data: watchlist = [] } = useQuery({
     queryKey: ['watchlist'],
@@ -23,12 +24,12 @@ export default function ProfilePage() {
 
   const { data: stats } = useQuery({
     queryKey: ['stats'],
-    queryFn: () => api.get('/stats').then((r) => r.data),
+    queryFn: () => showService.getStats(),
   });
 
   const favorites = watchlist.filter((s) => s.isFavorite);
   const watching = watchlist.filter((s) => s.status === 'watching');
-  const allShows = watchlist.slice(0, 9);
+  const allShows = watchlist.slice(0, 10);
 
   // Format TV time: total minutes → months, days, hours
   const totalMins = stats?.hoursWatched ? stats.hoursWatched * 60 : 0;
@@ -37,227 +38,174 @@ export default function ProfilePage() {
   const hours = Math.floor((totalMins % (60 * 24)) / 60);
 
   return (
-    <div style={{ background: '#000', minHeight: '100vh', paddingBottom: 80 }}>
-      {/* Profile hero — show poster/backdrop as background */}
-      <div className="profile-hero">
-        {/* Background: blurred poster collage */}
-        {watching.length > 0 && watching[0].showPoster ? (
+    <div className="space-y-6 min-h-screen">
+      {/* Profile Hero Header */}
+      <div className="relative rounded-2xl overflow-hidden glass-panel p-6 border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        {/* Background Backdrop */}
+        {watching.length > 0 && watching[0].showPoster && !imgError ? (
           <img
             src={posterUrl(watching[0].showPoster)}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'blur(20px) brightness(0.4)', transform: 'scale(1.1)' }}
+            onError={() => setImgError(true)}
+            className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-20 scale-125"
           />
         ) : (
-          <div style={{ width: '100%', height: '100%', background: '#111' }} />
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-950/40 via-slate-900 to-[#FFD500]/10" />
         )}
 
-        {/* Bell + ... overlay */}
-        <div style={{ position: 'absolute', top: 16, left: 16, right: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F5C518', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-          </div>
-          <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', gap: 3, padding: 8 }}>
-            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff', display: 'inline-block' }} />
-            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff', display: 'inline-block' }} />
-            <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#fff', display: 'inline-block' }} />
-          </button>
-        </div>
+        <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-end justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
+            {/* Avatar */}
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[#FFD500] to-yellow-600 p-0.5 shadow-[0_0_25px_rgba(255,213,0,0.3)]">
+              <div className="w-full h-full rounded-[14px] bg-slate-950 flex items-center justify-center text-white text-2xl font-black">
+                {user?.displayName?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || 'U'}
+              </div>
+            </div>
 
-        {/* Avatar + name */}
-        <div style={{ position: 'absolute', bottom: 16, left: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 56, height: 56, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', background: '#222', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <div>
+              <h1 className="text-2xl font-black text-white tracking-tight">
+                {user?.displayName || user?.username || 'TV Time Member'}
+              </h1>
+              <p className="text-xs font-semibold text-slate-400 mt-0.5">
+                @{user?.username || 'member'} • Joined 2026
+              </p>
+
+              <div className="flex items-center gap-2 mt-3">
+                <button
+                  id="edit-profile-btn"
+                  className="px-4 py-1.5 rounded-full border border-white/20 bg-white/5 hover:bg-white/10 text-xs font-extrabold text-white tracking-wider uppercase transition-all"
+                >
+                  EDIT PROFILE
+                </button>
+              </div>
+            </div>
           </div>
-          <div>
-            <h1 style={{ color: '#fff', fontSize: 18, fontWeight: 800, margin: 0 }}>{user?.displayName || user?.username}</h1>
-            <button
-              id="edit-profile-btn"
-              style={{ marginTop: 4, padding: '3px 12px', borderRadius: 4, border: '1px solid rgba(255,255,255,0.4)', background: 'none', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: '0.05em' }}
-            >
-              EDIT
+
+          <div className="flex items-center gap-2">
+            <button className="w-10 h-10 rounded-full bg-slate-900/80 border border-white/10 flex items-center justify-center text-slate-300 hover:text-[#FFD500] transition-colors">
+              <Bell size={18} />
+            </button>
+            <button className="w-10 h-10 rounded-full bg-slate-900/80 border border-white/10 flex items-center justify-center text-slate-300 hover:text-white transition-colors">
+              <MoreHorizontal size={18} />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Stats row */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      {/* Stats Counter Bar */}
+      <div className="grid grid-cols-3 gap-3">
         {[
-          { val: user?.following || 0, label: 'following' },
-          { val: user?.followers || 0, label: 'followers' },
-          { val: user?.commentsCount || 0, label: 'comment' },
+          { val: user?.following || 0, label: 'FOLLOWING' },
+          { val: user?.followers || 0, label: 'FOLLOWERS' },
+          { val: stats?.totalEpisodes || watchlist.length, label: 'EPISODES' },
         ].map((item) => (
-          <div key={item.label} className="stat-cell">
-            <span style={{ color: '#fff', fontSize: 20, fontWeight: 800 }}>{item.val}</span>
-            <span style={{ color: '#888', fontSize: 12, marginTop: 2 }}>{item.label}</span>
+          <div key={item.label} className="glass-panel p-4 text-center">
+            <span className="text-xl sm:text-2xl font-black text-white block">
+              {item.val}
+            </span>
+            <span className="text-[10px] font-bold text-slate-400 tracking-wider uppercase mt-0.5 block">
+              {item.label}
+            </span>
           </div>
         ))}
       </div>
 
-      {/* Stats section */}
-      <div style={{ padding: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ color: '#fff', fontSize: 17, fontWeight: 800, margin: 0 }}>Stats</h2>
-          <Link to="/stats" style={{ color: '#fff', display: 'flex', alignItems: 'center' }}>
-            <ChevronRight size={20} color="#888" />
+      {/* Watch Time Stat Highlight */}
+      <div className="glass-panel p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-[#FFD500]/10 border border-[#FFD500]/30 flex items-center justify-center text-[#FFD500]">
+              <Tv size={18} />
+            </div>
+            <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">
+              TV Time Watch Stat
+            </h3>
+          </div>
+          <Link to="/stats" className="text-xs font-bold text-[#FFD500] flex items-center gap-1 hover:underline">
+            <span>Details</span>
+            <ChevronRight size={16} />
           </Link>
         </div>
-        <div className="scroll-x" style={{ display: 'flex', gap: 8 }}>
-          {/* TV Time card */}
-          <div style={{ flexShrink: 0, background: '#111', borderRadius: 8, padding: 14, minWidth: 160, border: '1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
-              <span style={{ color: '#888', fontSize: 12 }}>TV time</span>
-            </div>
-            <div style={{ display: 'flex', gap: 12 }}>
-              {[
-                { val: months, label: 'MONTH' },
-                { val: days, label: 'DAYS' },
-                { val: hours, label: 'HOURS' },
-              ].map((t) => (
-                <div key={t.label} style={{ textAlign: 'center' }}>
-                  <p style={{ color: '#fff', fontSize: 22, fontWeight: 900, margin: 0 }}>{t.val}</p>
-                  <p style={{ color: '#888', fontSize: 10, marginTop: 2 }}>{t.label}</p>
-                </div>
-              ))}
-            </div>
+
+        <div className="grid grid-cols-3 gap-3 pt-2">
+          <div className="bg-slate-900/60 rounded-xl p-3 text-center border border-white/5">
+            <span className="text-2xl sm:text-3xl font-black text-[#FFD500] block">{months}</span>
+            <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">MONTHS</span>
           </div>
-          {/* Episodes card */}
-          <div style={{ flexShrink: 0, background: '#111', borderRadius: 8, padding: 14, minWidth: 120, border: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>
-              <span style={{ color: '#888', fontSize: 12 }}>Episodes</span>
-            </div>
-            <p style={{ color: '#fff', fontSize: 28, fontWeight: 900, margin: 0 }}>{(stats?.totalEpisodes || 0).toLocaleString()}</p>
+          <div className="bg-slate-900/60 rounded-xl p-3 text-center border border-white/5">
+            <span className="text-2xl sm:text-3xl font-black text-white block">{days}</span>
+            <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">DAYS</span>
+          </div>
+          <div className="bg-slate-900/60 rounded-xl p-3 text-center border border-white/5">
+            <span className="text-2xl sm:text-3xl font-black text-white block">{hours}</span>
+            <span className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">HOURS</span>
           </div>
         </div>
       </div>
 
-      {/* Lists */}
-      {lists.length > 0 && (
-        <div style={{ padding: '0 16px 16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ color: '#fff', fontSize: 17, fontWeight: 800, margin: 0 }}>Lists</h2>
-            <Link to="/lists" style={{ display: 'flex', alignItems: 'center' }}>
-              <ChevronRight size={20} color="#888" />
+      {/* Tracked Shows Grid */}
+      {allShows.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="section-pill">
+              MY SHOWS ({watchlist.length})
+            </span>
+            <Link to="/library" className="text-xs font-bold text-slate-400 hover:text-white">
+              View All
             </Link>
           </div>
-          <div className="scroll-x" style={{ display: 'flex', gap: 8 }}>
-            {lists.map((list) => {
-              const listPosters = watchlist
-                .filter((w) => list.showIds.includes(w.tmdbShowId) && w.showPoster)
-                .slice(0, 4)
-                .map((w) => posterUrl(w.showPoster));
 
-              return (
-                <Link key={list._id} to={`/lists/${list._id}`} style={{ textDecoration: 'none', flexShrink: 0 }}>
-                  <div style={{ width: 160, height: 90, borderRadius: 8, overflow: 'hidden', position: 'relative', background: '#1a1a1a' }}>
-                    {listPosters.length > 0 ? (
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', height: '100%', gap: 1 }}>
-                        {listPosters.map((p, i) => (
-                          <img key={i} src={p} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28 }}>{list.emoji}</div>
-                    )}
-                    {/* Overlay label */}
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '20px 8px 6px', background: 'linear-gradient(to top, rgba(0,0,0,0.9), transparent)' }}>
-                      <p style={{ color: '#fff', fontSize: 13, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{list.name}</p>
-                    </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+            {allShows.map((s) => (
+              <div
+                key={s._id}
+                onClick={() => navigate(`/show/${s.tmdbShowId}`)}
+                className="poster-card"
+              >
+                {s.showPoster ? (
+                  <img src={posterUrl(s.showPoster)} alt={s.showTitle} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center bg-slate-900">
+                    <span className="text-2xl mb-1">📺</span>
+                    <span className="text-[10px] font-bold text-slate-300 line-clamp-2">{s.showTitle}</span>
                   </div>
-                </Link>
-              );
-            })}
-          </div>
-          {/* Dots indicator */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 }}>
-            {lists.slice(0, 4).map((_, i) => (
-              <div key={i} style={{ width: i === 0 ? 8 : 6, height: i === 0 ? 8 : 6, borderRadius: '50%', background: i === 0 ? '#F5C518' : '#444' }} />
+                )}
+                <div className="card-progress" style={{ background: '#FFD500' }} />
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Shows section */}
-      {allShows.length > 0 && (
-        <div style={{ padding: '0 16px 16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ color: '#fff', fontSize: 17, fontWeight: 800, margin: 0 }}>Shows</h2>
-            <Link to="/library" style={{ display: 'flex', alignItems: 'center' }}>
-              <ChevronRight size={20} color="#888" />
-            </Link>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
-            {allShows.map((s) => {
-              const poster = s.showPoster ? posterUrl(s.showPoster) : null;
-              return (
-                <div
-                  key={s._id}
-                  onClick={() => navigate(`/show/${s.tmdbShowId}`)}
-                  style={{ borderRadius: 4, overflow: 'hidden', aspectRatio: '2/3', background: '#1a1a1a', cursor: 'pointer', position: 'relative' }}
-                >
-                  {poster ? (
-                    <img src={poster} alt={s.showTitle} className="poster-img" />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>📺</div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Favorite Shows */}
+      {/* Favorite Shows Section */}
       {favorites.length > 0 && (
-        <div style={{ padding: '0 16px 16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <h2 style={{ color: '#fff', fontSize: 17, fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#E53935', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Heart size={14} fill="#fff" color="#fff" />
-              </div>
-              Favorite shows
-            </h2>
-            <ChevronRight size={20} color="#888" />
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="section-pill !border-rose-500/30 !bg-rose-500/10 text-rose-300">
+              <Heart size={14} className="fill-rose-500 text-rose-500" />
+              FAVORITES
+            </span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
-            {favorites.map((s) => {
-              const poster = s.showPoster ? posterUrl(s.showPoster) : null;
-              return (
-                <div
-                  key={s._id}
-                  onClick={() => navigate(`/show/${s.tmdbShowId}`)}
-                  style={{ borderRadius: 4, overflow: 'hidden', aspectRatio: '2/3', background: '#1a1a1a', cursor: 'pointer', position: 'relative' }}
-                >
-                  {poster ? (
-                    <img src={poster} alt={s.showTitle} className="poster-img" />
-                  ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>📺</div>
-                  )}
-                  {/* Purple progress bar */}
-                  <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 3, background: '#9C27B0' }} />
-                </div>
-              );
-            })}
+
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+            {favorites.map((s) => (
+              <div
+                key={s._id}
+                onClick={() => navigate(`/show/${s.tmdbShowId}`)}
+                className="poster-card"
+              >
+                {s.showPoster ? (
+                  <img src={posterUrl(s.showPoster)} alt={s.showTitle} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-2xl bg-slate-900">📺</div>
+                )}
+                <div className="card-progress bg-rose-500" />
+              </div>
+            ))}
           </div>
         </div>
       )}
-
-      {/* Movies placeholder */}
-      <div style={{ padding: '0 16px 16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ color: '#fff', fontSize: 17, fontWeight: 800, margin: 0 }}>Movies</h2>
-          <ChevronRight size={20} color="#888" />
-        </div>
-        <div
-          style={{ background: '#111', borderRadius: 8, padding: '32px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}
-          onClick={() => navigate('/explore')}
-        >
-          <div style={{ width: 40, height: 40, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>+</div>
-          <span style={{ color: '#888', fontSize: 12, fontWeight: 700, letterSpacing: '0.1em' }}>ADD MOVIES</span>
-        </div>
-      </div>
     </div>
   );
 }
+
