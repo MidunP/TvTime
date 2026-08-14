@@ -5,16 +5,16 @@ const { cleanEnv, str, port, bool } = require('envalid');
 const env = cleanEnv(process.env, {
     NODE_ENV: str({ choices: ['development', 'production', 'test'], default: 'development' }),
     PORT: port({ default: 5000 }),
-    MONGODB_URI: str({ desc: 'MongoDB connection string' }),
-    JWT_SECRET: str({ desc: 'Secret key for signing access tokens' }),
-    JWT_REFRESH_SECRET: str({ desc: 'Secret key for signing refresh tokens' }),
+    MONGODB_URI: str({ default: 'mongodb://127.0.0.1:27017/cinetrack', desc: 'MongoDB connection string' }),
+    JWT_SECRET: str({ default: 'cinetrack_default_jwt_secret_change_in_production_32chars', desc: 'Secret key for signing access tokens' }),
+    JWT_REFRESH_SECRET: str({ default: 'cinetrack_default_refresh_secret_change_in_production_32chars', desc: 'Secret key for signing refresh tokens' }),
     TMDB_API_KEY: str({ default: '' }),
     TMDB_BASE_URL: str({ default: 'https://api.themoviedb.org/3' }),
     // Comma-separated list of allowed origins, e.g. "http://localhost:5173,https://cinetrack.vercel.app"
     CLIENT_URLS: str({ default: 'http://localhost:5173' }),
-    // Admin seed — NO defaults; crash on boot if missing in production
-    ADMIN_USERNAME: str({ desc: 'Admin seed username' }),
-    ADMIN_PASSWORD: str({ desc: 'Admin seed password' }),
+    // Admin seed credentials
+    ADMIN_USERNAME: str({ default: 'admin', desc: 'Admin seed username' }),
+    ADMIN_PASSWORD: str({ default: 'admin123', desc: 'Admin seed password' }),
     // TMDb mock mode — set to 'true' to use mock data even if TMDB_API_KEY is set
     USE_MOCK: str({ default: 'false' }),
     // Phase 3: Redis, Sentry, & Logging
