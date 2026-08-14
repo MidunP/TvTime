@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import api from '../services/api';
-import { Flame, Play, Clock, CheckCircle, TrendingUp, Tv, Award, Calendar } from 'lucide-react';
+import { Flame, Play, Clock, CheckCircle, TrendingUp, Tv, Award } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const COLORS = ['#6c63ff', '#ff6b6b', '#4ade80', '#ffd700', '#60a5fa', '#a78bfa'];
@@ -27,66 +27,6 @@ function StatCard({ label, value, subtitle, icon: Icon, gradient }) {
         {subtitle && <p className="text-xs text-text-muted mt-1">{subtitle}</p>}
       </div>
     </motion.div>
-  );
-}
-
-// GitHub-style heatmap
-function WatchingHeatmap({ data }) {
-  const weeks = [];
-  const today = new Date();
-
-  for (let w = 51; w >= 0; w--) {
-    const week = [];
-    for (let d = 6; d >= 0; d--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - w * 7 - d);
-      const key = date.toISOString().split('T')[0];
-      week.push({ date: key, count: data?.[key] || 0 });
-    }
-    weeks.push(week);
-  }
-
-  const maxCount = Math.max(...Object.values(data || {}), 1);
-
-  const getColor = (count) => {
-    if (count === 0) return 'bg-bg-tertiary';
-    const intensity = count / maxCount;
-    if (intensity < 0.25) return 'bg-accent-violet/20';
-    if (intensity < 0.5) return 'bg-accent-violet/40';
-    if (intensity < 0.75) return 'bg-accent-violet/70';
-    return 'bg-accent-violet';
-  };
-
-  return (
-    <div>
-      <h3 className="font-bold text-white mb-4 flex items-center gap-2">
-        <Calendar size={16} className="text-accent-violet" /> Watching Activity
-      </h3>
-      <div className="overflow-x-auto">
-        <div className="flex gap-1" style={{ minWidth: 728 }}>
-          {weeks.map((week, wi) => (
-            <div key={wi} className="flex flex-col gap-1">
-              {week.map((day) => (
-                <div
-                  key={day.date}
-                  title={`${day.date}: ${day.count} episode${day.count !== 1 ? 's' : ''}`}
-                  className={`w-3 h-3 rounded-sm transition-colors cursor-pointer hover:ring-1 hover:ring-accent-violet ${getColor(day.count)}`}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center gap-2 mt-2 text-xs text-text-muted">
-        <span>Less</span>
-        <div className="flex gap-1">
-          {['bg-bg-tertiary', 'bg-accent-violet/20', 'bg-accent-violet/40', 'bg-accent-violet/70', 'bg-accent-violet'].map((c) => (
-            <div key={c} className={`w-3 h-3 rounded-sm ${c}`} />
-          ))}
-        </div>
-        <span>More</span>
-      </div>
-    </div>
   );
 }
 
@@ -185,13 +125,6 @@ export default function StatsPage() {
           </BarChart>
         </ResponsiveContainer>
       </div>
-
-      {/* Heatmap */}
-      {stats?.heatmapData && (
-        <div className="card p-6">
-          <WatchingHeatmap data={stats.heatmapData} />
-        </div>
-      )}
     </div>
   );
 }
