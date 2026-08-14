@@ -1,5 +1,7 @@
+const { logger } = require('../utils/logger');
+
 const errorHandler = (err, req, res, next) => {
-  console.error('❌ Error:', err.stack);
+  logger.error({ err, url: req.originalUrl, method: req.method }, err.message);
 
   // Mongoose duplicate key
   if (err.code === 11000) {

@@ -1,7 +1,15 @@
 node_modules
-npm-debug.log
+npm-debug.log*
 .env
+.env.*
+!.env.example
 .git
 .gitignore
 coverage/
 *.md
+*.test.js
+*.spec.js
+__tests__/
+.github/
+.eslintrc*
+test_*.js

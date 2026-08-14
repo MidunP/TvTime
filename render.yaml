@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: cinetrack-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false   # Set this in Render dashboard (MongoDB Atlas connection string)
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: TMDB_API_KEY
+        sync: false   # Set in Render dashboard
+      - key: TMDB_BASE_URL
+        value: https://api.themoviedb.org/3
+      - key: USE_MOCK
+        value: false
+      - key: CLIENT_URLS
+        sync: false   # e.g. https://your-vercel-app.vercel.app
+      - key: ADMIN_USERNAME
+        sync: false   # Set in Render dashboard
+      - key: ADMIN_PASSWORD
+        sync: false   # Set in Render dashboard
+      - key: REDIS_URL
+        sync: false   # Set to Upstash Redis URL in dashboard
+      - key: SENTRY_DSN
+        sync: false   # Set in Render dashboard after Sentry signup
+      - key: LOG_LEVEL
+        value: info

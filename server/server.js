@@ -116,8 +116,32 @@ connectDB().then(async (conn) => {
   if (conn) {
     await seedAdminUser();
   }
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     logger.info(`🚀 CineTrack server running on port ${PORT} [${env.NODE_ENV}]`);
     logger.info(`   CORS origins: ${allowedOrigins.join(', ')}`);
   });
+
+  // ── Graceful shutdown ─────────────────────────────────
+  const shutdown = async (signal) => {
+    logger.info(`${signal} received — starting graceful shutdown`);
+    server.close(async () => {
+      logger.info('HTTP server closed');
+      try {
+        const mongoose = require('mongoose');
+        await mongoose.connection.close();
+        logger.info('MongoDB connection closed');
+      } catch (e) {
+        logger.error('Error closing MongoDB connection:', e.message);
+      }
+      process.exit(0);
+    });
+    // Force-kill if shutdown takes > 10s
+    setTimeout(() => {
+      logger.error('Graceful shutdown timed out — forcing exit');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 });

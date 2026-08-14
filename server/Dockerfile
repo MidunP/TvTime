@@ -1,17 +1,29 @@
 FROM node:20-alpine
 
-# Create app directory
+# tini handles zombie processes and passes signals to node correctly
+RUN apk add --no-cache tini
+
+# Run as non-root user for security
+USER node
+
 WORKDIR /app
 
-# Install dependencies first (layer caching)
-COPY package*.json ./
-RUN npm ci --omit=dev
+# Copy manifests first (leverages Docker layer cache)
+COPY --chown=node:node package*.json ./
 
-# Copy application source
-COPY . .
+# Install production deps only
+RUN npm ci --omit=dev --ignore-scripts
 
-# Expose the API port
+# Copy app source
+COPY --chown=node:node . .
+
+# Expose API port
 EXPOSE 5000
 
-# Start the server
+# Health check — Docker will mark container unhealthy if this fails
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -qO- http://localhost:5000/health || exit 1
+
+# Use tini as PID 1
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "server.js"]
