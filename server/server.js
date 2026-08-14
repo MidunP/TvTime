@@ -70,7 +70,16 @@ app.use('/api', apiLimiter);
 // ── Structured Logging (Pino) ─────────────────────────────
 app.use(httpLogger);
 
-// ── Health check ─────────────────────────────────────────
+// ── Root & Health check ───────────────────────────────────
+app.get('/', (req, res) =>
+  res.json({
+    name: 'CineTrack API',
+    status: 'online',
+    version: '1.0.0',
+    health: '/health',
+  })
+);
+
 app.get('/health', (req, res) =>
   res.json({ status: 'ok', environment: env.NODE_ENV, timestamp: new Date().toISOString() })
 );
