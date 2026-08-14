@@ -2,9 +2,20 @@ const pino = require('pino');
 const pinoHttp = require('pino-http');
 const env = require('../config/validateEnv');
 
+// Only use pino-pretty if it's actually installed (dev only — excluded in prod by npm ci --omit=dev)
+let pinoPrettyAvailable = false;
+try {
+    require.resolve('pino-pretty');
+    pinoPrettyAvailable = true;
+} catch (_) {
+    // pino-pretty not installed — production JSON logging mode
+}
+
+const usePretty = pinoPrettyAvailable && env.NODE_ENV !== 'production';
+
 const logger = pino({
     level: env.LOG_LEVEL || (env.NODE_ENV === 'production' ? 'info' : 'debug'),
-    ...(env.NODE_ENV !== 'production'
+    ...(usePretty
         ? {
             transport: {
                 target: 'pino-pretty',
