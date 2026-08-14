@@ -17,9 +17,10 @@ const env = cleanEnv(process.env, {
     ADMIN_PASSWORD: str({ desc: 'Admin seed password' }),
     // TMDb mock mode — set to 'true' to use mock data even if TMDB_API_KEY is set
     USE_MOCK: str({ default: 'false' }),
-    // Phase 3: uncomment when Redis / Sentry are set up
-    // REDIS_URL: str({ default: 'redis://127.0.0.1:6379' }),
-    // SENTRY_DSN: str({ default: '' }),
+    // Phase 3: Redis, Sentry, & Logging
+    REDIS_URL: str({ default: 'redis://127.0.0.1:6379', desc: 'Redis connection URI' }),
+    SENTRY_DSN: str({ default: '', desc: 'Sentry DSN for error monitoring' }),
+    LOG_LEVEL: str({ choices: ['fatal', 'error', 'warn', 'info', 'debug', 'trace'], default: 'info' }),
 });
 
 module.exports = env;

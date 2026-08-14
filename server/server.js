@@ -1,10 +1,19 @@
 require('dotenv').config();
 const env = require('./src/config/validateEnv');
+const Sentry = require('@sentry/node');
+
+// Initialize Sentry error monitoring if SENTRY_DSN is configured
+if (env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: env.SENTRY_DSN,
+    environment: env.NODE_ENV,
+    tracesSampleRate: env.NODE_ENV === 'production' ? 0.2 : 1.0,
+  });
+}
 
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const hpp = require('hpp');
 const mongoSanitize = require('express-mongo-sanitize');
@@ -12,6 +21,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const connectDB = require('./src/config/db');
 const errorHandler = require('./src/middleware/errorHandler');
 const { apiLimiter } = require('./src/middleware/rateLimiter');
+const { httpLogger, logger } = require('./src/utils/logger');
 
 // Routes
 const authRoutes = require('./src/routes/auth');
@@ -57,10 +67,8 @@ app.use(cookieParser());
 // ── Rate limiting (global) ───────────────────────────────
 app.use('/api', apiLimiter);
 
-// ── Logging ──────────────────────────────────────────────
-if (env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+// ── Structured Logging (Pino) ─────────────────────────────
+app.use(httpLogger);
 
 // ── Health check ─────────────────────────────────────────
 app.get('/health', (req, res) =>
@@ -81,6 +89,11 @@ app.use((req, res) => {
   res.status(404).json({ message: `Route ${req.originalUrl} not found` });
 });
 
+// ── Sentry Error Handler ─────────────────────────────────
+if (env.SENTRY_DSN) {
+  Sentry.setupExpressErrorHandler(app);
+}
+
 // ── Global error handler ─────────────────────────────────
 app.use(errorHandler);
 
@@ -94,7 +107,7 @@ async function seedAdminUser() {
   const existing = await User.findOne({ username });
   if (!existing) {
     await User.create({ username, passwordHash: password, displayName: username });
-    console.log(`✅ Admin user "${username}" created`);
+    logger.info(`✅ Admin user "${username}" created`);
   }
 }
 
@@ -104,7 +117,7 @@ connectDB().then(async (conn) => {
     await seedAdminUser();
   }
   app.listen(PORT, () => {
-    console.log(`🚀 CineTrack server running on port ${PORT} [${env.NODE_ENV}]`);
-    console.log(`   CORS origins: ${allowedOrigins.join(', ')}`);
+    logger.info(`🚀 CineTrack server running on port ${PORT} [${env.NODE_ENV}]`);
+    logger.info(`   CORS origins: ${allowedOrigins.join(', ')}`);
   });
 });
